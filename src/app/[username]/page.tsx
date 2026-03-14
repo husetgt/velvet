@@ -44,11 +44,11 @@ export default async function CreatorProfilePage({ params }: Props) {
         where: { userId: currentUser.id, post: { creatorId: creator.id } },
         select: { postId: true },
       })
-      unlockedPostIds = unlocks.map(u => u.postId)
+      unlockedPostIds = unlocks.map((u: { postId: string }) => u.postId)
     }
   }
 
-  const postsWithAccess = creator.posts.map(post => ({
+  const postsWithAccess = creator.posts.map((post: typeof creator.posts[number]) => ({
     ...post,
     isUnlocked: !post.isLocked || isSubscribed || unlockedPostIds.includes(post.id),
     price: post.price ? Number(post.price) : null,
@@ -118,7 +118,7 @@ export default async function CreatorProfilePage({ params }: Props) {
           {postsWithAccess.length === 0 ? (
             <div className="text-center py-12 text-[#8888a0]">No posts yet.</div>
           ) : (
-            postsWithAccess.map(post => (
+            postsWithAccess.map((post: typeof postsWithAccess[number]) => (
               <PostCard
                 key={post.id}
                 post={post}
