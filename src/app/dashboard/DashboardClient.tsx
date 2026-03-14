@@ -392,6 +392,8 @@ export default function DashboardClient({ user, initialStats }: { user: User; in
     else if (tab === 'earnings') setActiveTab('earnings')
     else if (tab === 'monthly') setActiveTab('monthly')
     else if (tab === 'subscribers') setActiveTab('subscribers')
+    // Auto-open new post modal if ?new=1
+    if (searchParams.get('new') === '1') setShowNewPost(true)
   }, [searchParams])
 
   // Close period dropdown on outside click

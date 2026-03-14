@@ -109,7 +109,7 @@ export default function AppSidebar({ user, onNewPost }: AppSidebarProps) {
   const NAV_ITEMS = isCreator ? CREATOR_NAV_ITEMS : FAN_NAV_ITEMS
 
   const BOTTOM_ITEMS = [
-    { href: '/membership', label: 'Membership', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
+    { href: '/membership', label: 'Memberships & Billing', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> },
     { href: '/settings', label: 'Settings', icon: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> },
   ]
 
@@ -170,20 +170,33 @@ export default function AppSidebar({ user, onNewPost }: AppSidebarProps) {
 
       <div className="mx-4 h-px bg-[#2a2a30] mb-2" />
 
-      {/* New Post button */}
-      {isCreator && (!collapsed || isMobile) && onNewPost && (
+      {/* New Post button — always shown for creators */}
+      {isCreator && (!collapsed || isMobile) && (
         <div className="px-3 pb-2">
-          <button onClick={onNewPost} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold text-white hover:opacity-90 transition-opacity" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            New Post
-          </button>
+          {onNewPost ? (
+            <button onClick={onNewPost} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold text-white hover:opacity-90 transition-opacity" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Post
+            </button>
+          ) : (
+            <Link href="/dashboard?new=1" onClick={() => isMobile && setMobileOpen(false)} className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold text-white hover:opacity-90 transition-opacity" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              New Post
+            </Link>
+          )}
         </div>
       )}
-      {isCreator && collapsed && !isMobile && onNewPost && (
+      {isCreator && collapsed && !isMobile && (
         <div className="px-2 pb-2">
-          <button onClick={onNewPost} title="New Post" className="w-10 h-10 mx-auto flex items-center justify-center rounded-full text-white hover:opacity-90 transition-opacity" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
+          {onNewPost ? (
+            <button onClick={onNewPost} title="New Post" className="w-10 h-10 mx-auto flex items-center justify-center rounded-full text-white hover:opacity-90 transition-opacity" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </button>
+          ) : (
+            <Link href="/dashboard?new=1" title="New Post" className="w-10 h-10 mx-auto flex items-center justify-center rounded-full text-white hover:opacity-90 transition-opacity" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            </Link>
+          )}
         </div>
       )}
 
@@ -316,17 +329,30 @@ export default function AppSidebar({ user, onNewPost }: AppSidebarProps) {
       </aside>
 
       {/* ─── Mobile FAB for New Post (creators only) ─────────────────────── */}
-      {isCreator && onNewPost && (
-        <button
-          onClick={onNewPost}
-          className="lg:hidden fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl hover:opacity-90 transition-opacity"
-          style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
-          aria-label="New Post"
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-        </button>
+      {isCreator && (
+        onNewPost ? (
+          <button
+            onClick={onNewPost}
+            className="lg:hidden fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl hover:opacity-90 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+            aria-label="New Post"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        ) : (
+          <Link
+            href="/dashboard?new=1"
+            className="lg:hidden fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl hover:opacity-90 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+            aria-label="New Post"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </Link>
+        )
       )}
     </>
   )

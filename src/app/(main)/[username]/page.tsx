@@ -8,6 +8,7 @@ import EditProfileInline from '@/components/EditProfileInline'
 import ProfileTabs from '@/components/ProfileTabs'
 import CoverUpload from '@/components/CoverUpload'
 import ProfileIntroPanel from '@/components/ProfileIntroPanel'
+import FollowButton from '@/components/FollowButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -69,17 +70,24 @@ export default async function UserProfilePage({ params }: Props) {
 
   // ─── Creator profile ─────────────────────────────────────────────────────
   let isSubscribed = false
+  let isFollowing = false
   let unlockedPostIds: string[] = []
 
   if (currentUser) {
-    const sub = await prisma.subscription.findUnique({
-      where: { subscriberId_creatorId: { subscriberId: currentUser.id, creatorId: profileUser.id } },
-    })
+    const [sub, follow, unlocks] = await Promise.all([
+      prisma.subscription.findUnique({
+        where: { subscriberId_creatorId: { subscriberId: currentUser.id, creatorId: profileUser.id } },
+      }),
+      (prisma as typeof prisma & { follow: { findUnique: (args: unknown) => Promise<{ id: string } | null> } }).follow.findUnique({
+        where: { followerId_creatorId: { followerId: currentUser.id, creatorId: profileUser.id } },
+      }),
+      prisma.postUnlock.findMany({
+        where: { userId: currentUser.id, post: { creatorId: profileUser.id } },
+        select: { postId: true },
+      }),
+    ])
     isSubscribed = sub?.status === 'ACTIVE'
-    const unlocks = await prisma.postUnlock.findMany({
-      where: { userId: currentUser.id, post: { creatorId: profileUser.id } },
-      select: { postId: true },
-    })
+    isFollowing = !!follow
     unlockedPostIds = unlocks.map((u: { postId: string }) => u.postId)
   }
 
@@ -191,7 +199,10 @@ export default async function UserProfilePage({ params }: Props) {
                       <TipButton creatorId={profileUser.id} creatorName={profileUser.displayName} />
                     </>
                   ) : (
-                    <SubscribeButton creatorId={profileUser.id} creatorName={profileUser.displayName} price={subPrice} />
+                    <>
+                      <FollowButton creatorId={profileUser.id} initialIsFollowing={isFollowing} />
+                      <SubscribeButton creatorId={profileUser.id} creatorName={profileUser.displayName} price={subPrice} />
+                    </>
                   )}
                 </>
               ) : (

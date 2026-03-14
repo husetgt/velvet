@@ -38,6 +38,8 @@ model User {
   tipsReceived         Tip[]           @relation("creator")
   sentLinkRequests     AccountLink[]   @relation("linkRequester")
   receivedLinkRequests AccountLink[]   @relation("linkTarget")
+  following            Follow[]        @relation("follower")
+  followers            Follow[]        @relation("creator")
 }
 
 model Post {
@@ -142,6 +144,18 @@ model AccountLink {
   target    User @relation("linkTarget", fields: [targetId], references: [id], onDelete: Cascade)
 
   @@unique([requesterId, targetId])
+}
+
+model Follow {
+  id         String   @id @default(cuid())
+  followerId String
+  creatorId  String
+  createdAt  DateTime @default(now())
+
+  follower User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  creator  User @relation("creator", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, creatorId])
 }
 
 enum Role {

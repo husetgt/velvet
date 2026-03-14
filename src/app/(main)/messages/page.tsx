@@ -155,11 +155,17 @@ function MessagesPageInner() {
   const [editingNoteText, setEditingNoteText] = useState('')
   const [savingNote, setSavingNote] = useState(false)
 
-  // PPV price state
+  // PPV & pending files state
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const [pendingPreviews, setPendingPreviews] = useState<string[]>([])
   const [ppvPrice, setPpvPrice] = useState<number | null>(null)
-  const [showPriceInput, setShowPriceInput] = useState(false)
-  const [priceInputValue, setPriceInputValue] = useState('')
+  const [showPPVModal, setShowPPVModal] = useState(false)
+  const [ppvInputValue, setPpvInputValue] = useState('')
+  const [freePreviewFiles, setFreePreviewFiles] = useState<File[]>([])
+  const [freePreviewPreviews, setFreePreviewPreviews] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const freePreviewInputRef = useRef<HTMLInputElement>(null)
+  const paidFilesInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
@@ -246,6 +252,11 @@ function MessagesPageInner() {
   // ── Optimistic send ─────────────────────────────────────────────────────
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault()
+    // If there are pending files, use media send path
+    if (pendingFiles.length || freePreviewFiles.length) {
+      await handleSendWithMedia()
+      return
+    }
     if (!messageInput.trim() || !selectedUserId || !currentUser) return
     setSending(true)
     setSendError('')
@@ -321,57 +332,107 @@ function MessagesPageInner() {
   }
 
   // ── File attachment + PPV ───────────────────────────────────────────────
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !selectedUserId || !currentUser) return
-    setSendError('')
-    const optimisticId = `optimistic_media_${Date.now()}`
-    const optimisticMsg: MessageItem = {
-      id: optimisticId,
-      senderId: currentUser.id,
-      receiverId: selectedUserId,
-      content: ppvPrice ? `📎 Media · $${ppvPrice.toFixed(2)} to unlock` : '📎 Media',
-      mediaUrl: URL.createObjectURL(file),
-      isRead: false,
-      createdAt: new Date().toISOString(),
-      _optimistic: true,
-      sender: { id: currentUser.id, username: currentUser.username, displayName: currentUser.displayName, avatarUrl: currentUser.avatarUrl },
-    }
-    setThread(prev => [...prev, optimisticMsg])
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    const newPreviews = files.map(f => URL.createObjectURL(f))
+    setPendingFiles(prev => [...prev, ...files])
+    setPendingPreviews(prev => [...prev, ...newPreviews])
     if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleFreePreviewFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    const newPreviews = files.map(f => URL.createObjectURL(f))
+    setFreePreviewFiles(prev => [...prev, ...files])
+    setFreePreviewPreviews(prev => [...prev, ...newPreviews])
+    if (freePreviewInputRef.current) freePreviewInputRef.current.value = ''
+  }
+
+  const handlePaidFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    const newPreviews = files.map(f => URL.createObjectURL(f))
+    setPendingFiles(prev => [...prev, ...files])
+    setPendingPreviews(prev => [...prev, ...newPreviews])
+    if (paidFilesInputRef.current) paidFilesInputRef.current.value = ''
+  }
+
+  const removePendingFile = (idx: number) => {
+    URL.revokeObjectURL(pendingPreviews[idx])
+    setPendingFiles(prev => prev.filter((_, i) => i !== idx))
+    setPendingPreviews(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  const removeFreePreviewFile = (idx: number) => {
+    URL.revokeObjectURL(freePreviewPreviews[idx])
+    setFreePreviewFiles(prev => prev.filter((_, i) => i !== idx))
+    setFreePreviewPreviews(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  const clearPendingMedia = () => {
+    pendingPreviews.forEach(u => URL.revokeObjectURL(u))
+    freePreviewPreviews.forEach(u => URL.revokeObjectURL(u))
+    setPendingFiles([])
+    setPendingPreviews([])
+    setFreePreviewFiles([])
+    setFreePreviewPreviews([])
+    setPpvPrice(null)
+  }
+
+  const uploadFiles = async (files: File[]): Promise<string[]> => {
+    if (!files.length) return []
+    const formData = new FormData()
+    files.forEach(f => formData.append('files', f))
+    const res = await fetch('/api/upload/media', { method: 'POST', body: formData })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Upload failed')
+    return data.urls ?? []
+  }
+
+  const handleSendWithMedia = async () => {
+    if (!selectedUserId || !currentUser) return
+    if (!messageInput.trim() && !pendingFiles.length && !freePreviewFiles.length) return
+    setSending(true)
+    setSendError('')
 
     try {
-      // Upload file
-      const formData = new FormData()
-      formData.append('files', file)
-      const uploadRes = await fetch('/api/upload/media', { method: 'POST', body: formData })
-      const uploadData = await uploadRes.json()
-      if (!uploadRes.ok) throw new Error(uploadData.error || 'Upload failed')
-      const mediaUrl = uploadData.urls?.[0]
+      // Upload files
+      const [paidUrls, freeUrls] = await Promise.all([
+        uploadFiles(pendingFiles),
+        uploadFiles(freePreviewFiles),
+      ])
 
-      // Send message
+      const mediaUrl = paidUrls[0] ?? freeUrls[0] ?? null
+      const content = messageInput.trim() || (ppvPrice ? `PPV media · $${ppvPrice.toFixed(2)} to unlock` : '📎 Media')
+
       const res = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           receiverId: selectedUserId,
-          content: ppvPrice ? `PPV media · $${ppvPrice.toFixed(2)} to unlock` : '📎 Media',
+          content,
           mediaUrl,
           mediaPrice: ppvPrice,
-          isMediaLocked: !!ppvPrice,
+          isMediaLocked: !!ppvPrice && !!mediaUrl,
         }),
       })
       const data = await res.json()
       if (res.ok && data.message) {
-        setThread(prev => prev.map(m => m.id === optimisticId ? data.message : m))
+        setThread(prev => [...prev, data.message])
+        setAllMessages(prev => [data.message, ...prev])
+        setMessageInput('')
+        clearPendingMedia()
       } else {
-        setThread(prev => prev.map(m => m.id === optimisticId ? { ...m, _error: true, _optimistic: false } : m))
+        setSendError(data.error || 'Failed to send')
       }
     } catch (err) {
       console.error(err)
-      setThread(prev => prev.map(m => m.id === optimisticId ? { ...m, _error: true, _optimistic: false } : m))
+      setSendError('Failed to send message')
+    } finally {
+      setSending(false)
     }
-    setPpvPrice(null)
   }
 
   const handleUnlockMessage = (msgId: string) => {
@@ -623,41 +684,141 @@ function MessagesPageInner() {
               </div>
             )}
 
-            {/* PPV price indicator */}
-            {ppvPrice && (
-              <div className="px-5 py-2 bg-[#e040fb11] border-t border-[#e040fb22] flex items-center justify-between">
-                <span className="text-xs text-[#e040fb]">Next media: ${ppvPrice.toFixed(2)} PPV</span>
-                <button onClick={() => setPpvPrice(null)} className="text-[#8888a0] hover:text-white text-xs">Cancel</button>
+            {/* PPV Modal */}
+            {showPPVModal && (
+              <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setShowPPVModal(false)} />
+                <div className="relative w-full max-w-sm mx-4 rounded-3xl overflow-hidden shadow-2xl" style={{ background: '#161618', border: '1px solid #2a2a30' }}>
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[#2a2a30]">
+                    <h3 className="text-white font-bold text-base">Set Message Price</h3>
+                    <button onClick={() => setShowPPVModal(false)} className="w-8 h-8 rounded-full flex items-center justify-center text-[#8888a0] hover:text-white hover:bg-[#2a2a30] transition-all">
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  </div>
+
+                  {/* Fan spending stats */}
+                  {spendingInfo && (
+                    <div className="mx-5 mt-4 p-4 rounded-2xl" style={{ background: '#1a1a1d', border: '1px solid #2a2a30' }}>
+                      <p className="text-[10px] font-bold text-[#8888a0] uppercase tracking-wider mb-3">Fan PPV spending habits</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: 'Total Spent', value: `$${spendingInfo.totalSpent.toFixed(2)}` },
+                          { label: 'PPV Spent', value: `$${spendingInfo.ppvSpent.toFixed(2)}` },
+                          { label: 'Tips Given', value: `$${spendingInfo.tipsGiven.toFixed(2)}` },
+                          { label: 'Sub Status', value: spendingInfo.subStatus },
+                        ].map(row => (
+                          <div key={row.label} className="flex flex-col">
+                            <span className="text-[#555568] text-[10px]">{row.label}</span>
+                            <span className="text-white text-sm font-bold">{row.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Price input */}
+                  <div className="px-5 py-4">
+                    <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-[#1a1a1d] border border-[#2a2a30]">
+                      <span className="text-[#8888a0] text-sm font-bold">$</span>
+                      <input
+                        autoFocus
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={ppvInputValue}
+                        onChange={e => setPpvInputValue(e.target.value)}
+                        placeholder="0.00"
+                        className="flex-1 bg-transparent text-white text-base font-semibold placeholder-[#555568] focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Confirm button */}
+                  <div className="px-5 pb-5">
+                    <button
+                      onClick={() => {
+                        const p = parseFloat(ppvInputValue)
+                        if (!isNaN(p) && p > 0) setPpvPrice(p)
+                        setShowPPVModal(false)
+                        setPpvInputValue('')
+                      }}
+                      className="w-full py-3 rounded-2xl font-bold text-black text-sm hover:opacity-90 transition-opacity"
+                      style={{ background: 'white' }}
+                    >
+                      Set the price
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* PPV price popup */}
-            {showPriceInput && (
-              <div className="px-5 py-2 bg-[#161618] border-t border-[#2a2a30] flex items-center gap-2">
-                <span className="text-[#8888a0] text-xs">Price ($):</span>
-                <input
-                  autoFocus
-                  type="number"
-                  min="0.99"
-                  step="0.01"
-                  value={priceInputValue}
-                  onChange={e => setPriceInputValue(e.target.value)}
-                  placeholder="9.99"
-                  className="w-20 px-2 py-1 rounded-lg bg-[#1e1e21] border border-[#2a2a30] text-white text-xs focus:outline-none focus:border-[#e040fb44]"
-                />
-                <button
-                  onClick={() => {
-                    const p = parseFloat(priceInputValue)
-                    if (!isNaN(p) && p > 0) setPpvPrice(p)
-                    setShowPriceInput(false)
-                    setPriceInputValue('')
-                  }}
-                  className="px-3 py-1 rounded-lg text-xs font-semibold text-white"
-                  style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
-                >
-                  Set
-                </button>
-                <button onClick={() => { setShowPriceInput(false); setPriceInputValue('') }} className="text-[#8888a0] hover:text-white text-xs">Cancel</button>
+            {/* Pending files preview */}
+            {(pendingFiles.length > 0 || freePreviewFiles.length > 0) && (
+              <div className="px-5 pt-3 pb-1 border-t border-[#2a2a30]" style={{ background: '#111113' }}>
+                {ppvPrice ? (
+                  /* PPV layout: free preview + paid sections */
+                  <div className="flex gap-3 items-start mb-2">
+                    <button
+                      onClick={clearPendingMedia}
+                      className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#2a2a30] flex items-center justify-center text-[#8888a0] hover:text-white text-xs"
+                    >×</button>
+                    {/* Free preview */}
+                    <div className="flex-1">
+                      <p className="text-[#8888a0] text-[10px] font-bold uppercase tracking-wider mb-1">Free preview</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {freePreviewPreviews.map((url, idx) => (
+                          <div key={idx} className="relative w-14 h-14 rounded-xl overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                            <button onClick={() => removeFreePreviewFile(idx)} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center">×</button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => freePreviewInputRef.current?.click()}
+                          className="w-14 h-14 rounded-xl flex items-center justify-center text-white text-xl font-bold"
+                          style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+                        >+</button>
+                        <input ref={freePreviewInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleFreePreviewFileChange} />
+                      </div>
+                    </div>
+                    {/* Paid */}
+                    <div className="flex-1">
+                      <p className="text-[#e040fb] text-[10px] font-bold uppercase tracking-wider mb-1">Price to view: ${ppvPrice.toFixed(2)}</p>
+                      <div className="flex gap-2 flex-wrap">
+                        {pendingPreviews.map((url, idx) => (
+                          <div key={idx} className="relative w-14 h-14 rounded-xl overflow-hidden">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={url} alt="" className="w-full h-full object-cover" />
+                            <button onClick={() => removePendingFile(idx)} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center">×</button>
+                          </div>
+                        ))}
+                        <button
+                          onClick={() => paidFilesInputRef.current?.click()}
+                          className="w-14 h-14 rounded-xl flex items-center justify-center text-white text-xl font-bold"
+                          style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+                        >+</button>
+                        <input ref={paidFilesInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handlePaidFilesChange} />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* Normal pending files */
+                  <div className="flex gap-2 flex-wrap items-center mb-2">
+                    {pendingPreviews.map((url, idx) => (
+                      <div key={idx} className="relative w-14 h-14 rounded-xl overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={url} alt="" className="w-full h-full object-cover" />
+                        <button onClick={() => removePendingFile(idx)} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/60 text-white text-[10px] flex items-center justify-center">×</button>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-14 h-14 rounded-xl flex items-center justify-center text-white text-xl font-bold"
+                      style={{ background: 'linear-gradient(135deg, #22c55e, #16a34a)' }}
+                    >+</button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -673,13 +834,13 @@ function MessagesPageInner() {
                   <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
                 </svg>
               </button>
-              <input ref={fileInputRef} type="file" accept="image/*,video/*" className="hidden" onChange={handleFileChange} />
+              <input ref={fileInputRef} type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleFileChange} />
 
               {/* PPV price button (creators only) */}
               {isCreator && (
                 <button
                   type="button"
-                  onClick={() => setShowPriceInput(v => !v)}
+                  onClick={() => setShowPPVModal(true)}
                   className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors shrink-0 text-sm ${ppvPrice ? 'text-[#e040fb]' : 'text-[#8888a0] hover:text-white'}`}
                   title="Set PPV price"
                 >
@@ -696,7 +857,7 @@ function MessagesPageInner() {
               />
               <button
                 type="submit"
-                disabled={sending || !messageInput.trim()}
+                disabled={sending || (!messageInput.trim() && !pendingFiles.length && !freePreviewFiles.length)}
                 className="w-9 h-9 rounded-xl flex items-center justify-center disabled:opacity-40 hover:opacity-90 transition-opacity shrink-0"
                 style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
               >

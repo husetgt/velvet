@@ -40,9 +40,13 @@ async function FeedContent() {
   const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const [subscriptions, unlocks, recommendedCreators] = await Promise.all([
+  const [subscriptions, follows, unlocks, recommendedCreators] = await Promise.all([
     prisma.subscription.findMany({
       where: { subscriberId: user.id, status: 'ACTIVE' },
+      select: { creatorId: true },
+    }),
+    (prisma as typeof prisma & { follow: { findMany: (args: unknown) => Promise<{ creatorId: string }[]> } }).follow.findMany({
+      where: { followerId: user.id },
       select: { creatorId: true },
     }),
     prisma.postUnlock.findMany({
@@ -57,20 +61,31 @@ async function FeedContent() {
     }),
   ])
 
-  const creatorIds = subscriptions.map((s: { creatorId: string }) => s.creatorId)
+  const subscribedCreatorIds = new Set(subscriptions.map((s: { creatorId: string }) => s.creatorId))
+  const followedCreatorIds = new Set(follows.map((f: { creatorId: string }) => f.creatorId))
+  const allCreatorIds = [...new Set([...subscribedCreatorIds, ...followedCreatorIds])]
   const unlockedPostIds = new Set(unlocks.map((u: { postId: string }) => u.postId))
 
-  const posts = creatorIds.length
+  const posts = allCreatorIds.length
     ? await prisma.post.findMany({
-        where: { creatorId: { in: creatorIds } },
+        where: {
+          OR: [
+            // All posts from subscribed creators
+            { creatorId: { in: [...subscribedCreatorIds] } },
+            // Only free posts from followed-only creators
+            { creatorId: { in: [...followedCreatorIds].filter(id => !subscribedCreatorIds.has(id)) }, isLocked: false, price: null },
+          ],
+        },
         include: { creator: { select: { username: true, displayName: true, avatarUrl: true } } },
         orderBy: { createdAt: 'desc' },
         take: 30,
       })
     : []
+  
+  const creatorIds = allCreatorIds
 
   type RawPost = {
-    id: string; title: string | null; content: string; mediaUrls: string[]
+    id: string; creatorId: string; title: string | null; content: string; mediaUrls: string[]
     isLocked: boolean; price: { toNumber?: () => number } | null
     likesCount: number; createdAt: Date
     creator: { username: string; displayName: string; avatarUrl: string | null }
@@ -80,7 +95,7 @@ async function FeedContent() {
     ...post,
     price: post.price ? Number(post.price) : null,
     createdAt: post.createdAt.toISOString(),
-    isUnlocked: !post.isLocked || unlockedPostIds.has(post.id),
+    isUnlocked: !post.isLocked || subscribedCreatorIds.has(post.creatorId) || unlockedPostIds.has(post.id),
   }))
 
   type RawCreator = {
@@ -91,7 +106,7 @@ async function FeedContent() {
   }
 
   const recommended = (recommendedCreators as RawCreator[]).filter(
-    c => !creatorIds.includes(c.id)
+    c => !creatorIds.includes(c.id as string)
   ).slice(0, 6)
 
   if (postsWithAccess.length === 0) {

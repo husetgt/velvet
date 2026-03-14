@@ -25,6 +25,7 @@ export async function GET(req: NextRequest) {
         orderBy: { createdAt: 'asc' },
         include: {
           sender: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+          receiver: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
         },
         take: 100,
       })
@@ -106,6 +107,7 @@ export async function POST(req: NextRequest) {
       },
       include: {
         sender: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
+        receiver: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
       },
     })
 

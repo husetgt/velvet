@@ -174,8 +174,32 @@ export default function SettingsPage() {
   const handleIntroVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    setUploadingIntro(true)
     setIntroError('')
+
+    // Validate duration
+    const validateDuration = (): Promise<boolean> => new Promise(resolve => {
+      const videoEl = document.createElement('video')
+      videoEl.preload = 'metadata'
+      videoEl.onloadedmetadata = () => {
+        URL.revokeObjectURL(videoEl.src)
+        if (videoEl.duration > 10) {
+          setIntroError('Video must be 10 seconds or less')
+          resolve(false)
+        } else {
+          resolve(true)
+        }
+      }
+      videoEl.onerror = () => { URL.revokeObjectURL(videoEl.src); resolve(true) }
+      videoEl.src = URL.createObjectURL(file)
+    })
+
+    const valid = await validateDuration()
+    if (!valid) {
+      if (introVideoInputRef.current) introVideoInputRef.current.value = ''
+      return
+    }
+
+    setUploadingIntro(true)
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -539,14 +563,14 @@ export default function SettingsPage() {
           {user.isCreator && (
             <Section title="Intro Video">
               <p className="text-[#8888a0] text-sm mb-4">
-                Upload a short intro video (max 60s) that appears on your profile and in the Discover feed.
+                Upload a short intro video (max 10 seconds, portrait 9:16) that appears on your profile and in the Discover feed.
               </p>
               {introError && (
                 <div className="mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{introError}</div>
               )}
               {introVideoUrl ? (
                 <div className="space-y-3">
-                  <div className="relative rounded-2xl overflow-hidden bg-black aspect-video max-w-sm">
+                  <div className="relative rounded-2xl overflow-hidden bg-black aspect-[9/16] max-h-64 max-w-[calc(9/16*256px)]">
                     {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                     <video
                       src={introVideoUrl}

@@ -16,6 +16,11 @@ export default function ProfileIntroPanel({ username, introVideoUrl, isOwnProfil
   const [localVideoUrl, setLocalVideoUrl] = useState(introVideoUrl)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Hide panel entirely if not own profile and no intro video
+  if (!localVideoUrl && !isOwnProfile) {
+    return null
+  }
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -134,7 +139,7 @@ export default function ProfileIntroPanel({ username, introVideoUrl, isOwnProfil
               </div>
               <div className="text-center">
                 <p className="text-white text-sm font-semibold">{uploading ? 'Uploading…' : 'Add intro video'}</p>
-                <p className="text-[#8888a0] text-xs mt-0.5">Short clip, max 60s</p>
+                <p className="text-[#8888a0] text-xs mt-0.5">Short clip, max 10s</p>
               </div>
             </button>
           </div>
