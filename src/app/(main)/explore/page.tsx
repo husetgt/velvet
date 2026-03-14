@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
-import AppSidebar from '@/components/AppSidebar'
+import AppNavbar from '@/components/AppNavbar'
 
 export default async function ExplorePage() {
   const supabase = await createClient()
@@ -23,31 +23,33 @@ export default async function ExplorePage() {
     orderBy: { createdAt: 'desc' },
   })
 
+  const unreadMessages = await prisma.message.count({
+    where: { receiverId: user.id, isRead: false },
+  })
+
   return (
-    <div className="flex h-screen bg-[#0d0d0f] text-white overflow-hidden">
-      <AppSidebar
-        user={{ displayName: user.displayName, username: user.username, role: user.role }}
-        activePath="/explore"
+    <div className="min-h-screen bg-[#0d0d0f] text-white">
+      <AppNavbar
+        user={{ displayName: user.displayName, username: user.username, role: user.role, avatarUrl: user.avatarUrl }}
+        unreadMessages={unreadMessages}
+        unreadNotifications={0}
       />
 
-      <main className="flex-1 overflow-auto">
+      <main className="pt-16">
         <div className="max-w-5xl mx-auto px-4 py-8">
-          {/* Header + search bar */}
+          {/* Search bar */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold mb-1">Discover</h1>
-            <p className="text-[#555568] text-sm mb-5">Find creators you&apos;ll love</p>
-            {/* Search bar (UI only) */}
-            <div className="relative max-w-md">
+            <div className="relative max-w-xl">
               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <svg className="w-4 h-4 text-[#555568]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                <svg className="w-4 h-4 text-[#8888a0]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </div>
               <input
                 type="text"
-                placeholder="Search creators…"
+                placeholder="Search creators..."
                 readOnly
-                className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#161618] border border-[#2a2a30] text-white placeholder-[#555568] focus:outline-none cursor-default text-sm"
+                className="w-full pl-11 pr-4 py-3 rounded-2xl bg-[#161618] border border-[#2a2a30] text-white placeholder-[#8888a0] focus:outline-none cursor-default text-sm"
               />
             </div>
           </div>
@@ -64,7 +66,7 @@ export default async function ExplorePage() {
                       <stop offset="0%" stopColor="#e040fb" /><stop offset="100%" stopColor="#7c4dff" />
                     </linearGradient>
                   </defs>
-                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
               </div>
               <p className="text-white font-semibold mb-1">No creators yet</p>
@@ -91,31 +93,30 @@ export default async function ExplorePage() {
                 >
                   {/* Banner */}
                   <div
-                    className="h-32 w-full relative shrink-0"
+                    className="h-28 w-full relative shrink-0"
                     style={
                       creator.coverUrl
                         ? { background: `url(${creator.coverUrl}) center/cover` }
                         : { background: 'linear-gradient(135deg, rgba(224,64,251,0.35), rgba(124,77,255,0.35))' }
                     }
                   >
-                    {/* Subtle dark overlay */}
                     <div className="absolute inset-0 bg-black/20" />
                   </div>
 
                   {/* Card body */}
                   <div className="px-4 pb-4 pt-0 flex flex-col flex-1">
                     {/* Avatar overlapping banner */}
-                    <div className="relative -mt-8 mb-3">
+                    <div className="relative -mt-7 mb-2">
                       {creator.avatarUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={creator.avatarUrl}
                           alt={creator.displayName}
-                          className="w-16 h-16 rounded-full object-cover border-4 border-[#161618] shadow-xl"
+                          className="w-14 h-14 rounded-full object-cover border-4 border-[#161618] shadow-xl"
                         />
                       ) : (
                         <div
-                          className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white border-4 border-[#161618] shadow-xl"
+                          className="w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold text-white border-4 border-[#161618] shadow-xl"
                           style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
                         >
                           {creator.displayName.charAt(0).toUpperCase()}
@@ -126,16 +127,11 @@ export default async function ExplorePage() {
                     {/* Name + handle */}
                     <div className="mb-2">
                       <div className="font-bold text-white text-sm leading-tight truncate">{creator.displayName}</div>
-                      <div className="text-xs text-[#555568] mt-0.5">@{creator.username}</div>
+                      <div className="text-xs text-[#8888a0] mt-0.5">@{creator.username}</div>
                     </div>
 
-                    {/* Bio */}
-                    {creator.bio && (
-                      <p className="text-[#8888a0] text-xs leading-relaxed line-clamp-2 mb-3">{creator.bio}</p>
-                    )}
-
                     {/* Stats row */}
-                    <div className="flex items-center gap-3 text-xs text-[#555568] mt-auto mb-3">
+                    <div className="flex items-center gap-2 text-xs text-[#8888a0] mt-auto mb-3">
                       <span>
                         <span className="text-white font-semibold">{creator._count.subscribers.toLocaleString()}</span>{' '}
                         fans
@@ -158,10 +154,10 @@ export default async function ExplorePage() {
                             color: '#e040fb',
                           }}
                         >
-                          ${Number(creator.subscriptionPrice).toFixed(2)}/mo
+                          From ${Number(creator.subscriptionPrice).toFixed(2)}/mo
                         </div>
                       ) : (
-                        <div className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#555568] border border-[#2a2a30]">
+                        <div className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#8888a0] border border-[#2a2a30]">
                           Free
                         </div>
                       )}

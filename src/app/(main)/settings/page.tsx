@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import AppSidebar from '@/components/AppSidebar'
+import AppNavbar from '@/components/AppNavbar'
 
 interface UserInfo {
   id: string
@@ -93,7 +93,7 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-[#0d0d0f] text-white items-center justify-center">
+      <div className="min-h-screen bg-[#0d0d0f] text-white flex items-center justify-center">
         <div className="text-[#8888a0] text-sm">Loading…</div>
       </div>
     )
@@ -101,22 +101,23 @@ export default function SettingsPage() {
 
   if (!user) {
     return (
-      <div className="flex h-screen bg-[#0d0d0f] text-white items-center justify-center">
+      <div className="min-h-screen bg-[#0d0d0f] text-white flex items-center justify-center">
         <div className="text-[#8888a0] text-sm">Please sign in to access settings.</div>
       </div>
     )
   }
 
-  const inputCls = 'w-full rounded-xl bg-[#1e1e21] border border-[#2a2a30] text-white placeholder-[#555568] focus:outline-none focus:border-[#e040fb] focus:ring-1 focus:ring-[#e040fb22] transition-all px-4 py-2.5 text-sm'
+  const inputCls = 'w-full rounded-xl bg-[#1e1e21] border border-[#2a2a30] text-white placeholder-[#8888a0] focus:outline-none focus:border-[#e040fb] focus:ring-1 focus:ring-[#e040fb22] transition-all px-4 py-2.5 text-sm'
 
   return (
-    <div className="flex h-screen bg-[#0d0d0f] text-white overflow-hidden">
-      <AppSidebar
-        user={{ displayName: user.displayName, username: user.username, role: user.role }}
-        activePath="/settings"
+    <div className="min-h-screen bg-[#0d0d0f] text-white">
+      <AppNavbar
+        user={{ displayName: user.displayName, username: user.username, role: user.role, avatarUrl: user.avatarUrl }}
+        unreadMessages={0}
+        unreadNotifications={0}
       />
 
-      <main className="flex-1 overflow-auto">
+      <main className="pt-16">
         <div className="max-w-xl mx-auto px-4 py-10">
           <h1 className="text-2xl font-bold mb-8">Settings</h1>
 
@@ -145,8 +146,8 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <div className="text-white font-semibold">{user.displayName}</div>
-                  <div className="text-[#555568] text-sm">@{user.username}</div>
-                  <div className="text-[#555568] text-xs mt-0.5 capitalize">{user.role.toLowerCase()}</div>
+                  <div className="text-[#8888a0] text-sm">@{user.username}</div>
+                  <div className="text-[#8888a0] text-xs mt-0.5 capitalize">{user.role.toLowerCase()}</div>
                 </div>
               </div>
 
@@ -199,7 +200,7 @@ export default function SettingsPage() {
                 {/* Read-only username */}
                 <div>
                   <label className="block text-xs font-semibold text-[#8888a0] uppercase tracking-wider mb-1.5">Username</label>
-                  <div className="flex items-center px-4 py-2.5 rounded-xl bg-[#1a1a1d] border border-[#2a2a30] text-[#555568] text-sm cursor-not-allowed">
+                  <div className="flex items-center px-4 py-2.5 rounded-xl bg-[#1a1a1d] border border-[#2a2a30] text-[#8888a0] text-sm cursor-not-allowed">
                     @{user.username}
                     <span className="ml-auto text-[10px] text-[#3a3a44]">cannot be changed</span>
                   </div>
@@ -244,9 +245,9 @@ export default function SettingsPage() {
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-[#8888a0] border border-[#2a2a30] hover:border-red-500/40 hover:text-red-400 transition-all disabled:opacity-50"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-                    <polyline points="16 17 21 12 16 7"/>
-                    <line x1="21" y1="12" x2="9" y2="12"/>
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
                   </svg>
                   {signingOut ? 'Signing out…' : 'Sign out'}
                 </button>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import AppSidebar from '@/components/AppSidebar'
+import AppNavbar from '@/components/AppNavbar'
 
 interface UserInfo {
   id: string
@@ -97,11 +97,10 @@ function LockedMessageBubble({ msg, isMine, onUnlock }: { msg: MessageItem; isMi
         border: '1px solid rgba(224,64,251,0.25)',
       }}
     >
-      {/* Blurred image placeholder */}
-      <div className="h-32 relative" style={{ background: 'linear-gradient(135deg, rgba(224,64,251,0.2), rgba(124,77,255,0.2))', filter: 'blur(0px)' }}>
+      <div className="h-28 relative" style={{ background: 'linear-gradient(135deg, rgba(224,64,251,0.2), rgba(124,77,255,0.2))', filter: 'blur(0px)' }}>
         <div className="absolute inset-0 flex items-center justify-center">
           <svg className="w-10 h-10 opacity-30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-            <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            <rect x="3" y="3" width="18" height="18" rx="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
           </svg>
         </div>
       </div>
@@ -208,7 +207,7 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="flex h-screen bg-[#0d0d0f] text-white items-center justify-center">
+      <div className="min-h-screen bg-[#0d0d0f] text-white flex items-center justify-center">
         <div className="text-[#8888a0] text-sm">Loading…</div>
       </div>
     )
@@ -216,7 +215,7 @@ export default function MessagesPage() {
 
   if (!currentUser) {
     return (
-      <div className="flex h-screen bg-[#0d0d0f] text-white items-center justify-center">
+      <div className="min-h-screen bg-[#0d0d0f] text-white flex items-center justify-center">
         <div className="text-center">
           <p className="text-[#8888a0] mb-4 text-sm">Please sign in to view messages</p>
           <Link href="/login" className="px-6 py-2.5 rounded-xl font-semibold text-white hover:opacity-90 transition-opacity text-sm" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
@@ -228,16 +227,18 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="flex h-screen bg-[#0d0d0f] text-white overflow-hidden">
-      <AppSidebar
-        user={{ displayName: currentUser.displayName, username: currentUser.username, role: currentUser.role }}
-        activePath="/messages"
+    <div className="min-h-screen bg-[#0d0d0f] text-white flex flex-col">
+      <AppNavbar
+        user={{ displayName: currentUser.displayName, username: currentUser.username, role: currentUser.role, avatarUrl: currentUser.avatarUrl }}
+        unreadMessages={0}
+        unreadNotifications={0}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Conversation list */}
-        <div className="w-72 border-r border-[#1e1e21] bg-[#0d0d0f] flex flex-col shrink-0">
-          <div className="px-5 py-4 border-b border-[#1e1e21]">
+      {/* Full height container below navbar */}
+      <div className="flex flex-1 pt-[60px] overflow-hidden" style={{ height: 'calc(100vh - 0px)' }}>
+        {/* Conversation list — fixed w-80 */}
+        <div className="w-80 border-r border-[#2a2a30] bg-[#0d0d0f] flex flex-col shrink-0 overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#2a2a30]">
             <h2 className="font-bold text-white text-base">Messages</h2>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -248,11 +249,11 @@ export default function MessagesPage() {
                   style={{ background: 'linear-gradient(135deg, rgba(224,64,251,0.12), rgba(124,77,255,0.12))', border: '1px solid rgba(224,64,251,0.15)' }}
                 >
                   <svg className="w-5 h-5 text-[#e040fb]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
                 </div>
                 <p className="text-white text-sm font-medium">No messages yet</p>
-                <p className="text-[#555568] text-xs mt-1">Messages from creators appear here</p>
+                <p className="text-[#8888a0] text-xs mt-1">Messages appear here</p>
               </div>
             ) : (
               conversations.map((convo) => (
@@ -260,18 +261,16 @@ export default function MessagesPage() {
                   key={convo.userId}
                   onClick={() => setSelectedUserId(convo.userId)}
                   className={`w-full flex items-center gap-3 px-4 py-3.5 text-left transition-colors border-b border-[#1a1a1e] ${
-                    selectedUserId === convo.userId
-                      ? 'bg-[#161618]'
-                      : 'hover:bg-[#111114]'
+                    selectedUserId === convo.userId ? 'bg-[#161618]' : 'hover:bg-[#111114]'
                   }`}
                 >
                   <AvatarCircle name={convo.displayName} avatarUrl={convo.avatarUrl} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2 mb-0.5">
                       <span className="text-sm font-semibold text-white truncate">{convo.displayName}</span>
-                      <span className="text-[10px] text-[#555568] shrink-0">{formatDate(convo.lastAt)}</span>
+                      <span className="text-[10px] text-[#8888a0] shrink-0">{formatDate(convo.lastAt)}</span>
                     </div>
-                    <div className="text-xs text-[#555568] truncate">{convo.lastMessage}</div>
+                    <div className="text-xs text-[#8888a0] truncate">{convo.lastMessage}</div>
                   </div>
                 </button>
               ))
@@ -284,11 +283,11 @@ export default function MessagesPage() {
           {selectedConvo ? (
             <>
               {/* Thread header */}
-              <div className="px-6 py-4 border-b border-[#1e1e21] flex items-center gap-3 bg-[#0d0d0f]">
+              <div className="px-6 py-4 border-b border-[#2a2a30] flex items-center gap-3 bg-[#0d0d0f] shrink-0">
                 <AvatarCircle name={selectedConvo.displayName} avatarUrl={selectedConvo.avatarUrl} />
                 <div>
                   <div className="font-semibold text-white text-sm">{selectedConvo.displayName}</div>
-                  <div className="text-xs text-[#555568]">@{selectedConvo.username}</div>
+                  <div className="text-xs text-[#8888a0]">@{selectedConvo.username}</div>
                 </div>
               </div>
 
@@ -318,7 +317,7 @@ export default function MessagesPage() {
                             {msg.content}
                           </div>
                         )}
-                        <span className="text-[10px] text-[#555568] px-1">{formatTime(msg.createdAt)}</span>
+                        <span className="text-[10px] text-[#8888a0] px-1">{formatTime(msg.createdAt)}</span>
                       </div>
                     </div>
                   )
@@ -327,13 +326,19 @@ export default function MessagesPage() {
               </div>
 
               {/* Send form */}
-              <form onSubmit={handleSend} className="px-6 py-4 border-t border-[#1e1e21] flex items-center gap-3">
+              <form onSubmit={handleSend} className="px-6 py-4 border-t border-[#2a2a30] flex items-center gap-3 shrink-0">
+                {/* Attachment icon */}
+                <button type="button" className="w-9 h-9 rounded-xl flex items-center justify-center text-[#8888a0] hover:text-white hover:bg-[#1e1e21] transition-colors shrink-0">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  </svg>
+                </button>
                 <input
                   type="text"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
                   placeholder="Send a message…"
-                  className="flex-1 rounded-2xl bg-[#161618] border border-[#2a2a30] text-white placeholder-[#555568] focus:outline-none focus:border-[#e040fb44] transition-all px-4 py-2.5 text-sm"
+                  className="flex-1 rounded-2xl bg-[#161618] border border-[#2a2a30] text-white placeholder-[#8888a0] focus:outline-none focus:border-[#e040fb44] transition-all px-4 py-2.5 text-sm"
                 />
                 <button
                   type="submit"
@@ -342,7 +347,7 @@ export default function MessagesPage() {
                   style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
                 >
                   <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                    <line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
                   </svg>
                 </button>
               </form>
@@ -354,11 +359,11 @@ export default function MessagesPage() {
                 style={{ background: 'linear-gradient(135deg, rgba(224,64,251,0.12), rgba(124,77,255,0.12))', border: '1px solid rgba(224,64,251,0.2)' }}
               >
                 <svg className="w-7 h-7 text-[#e040fb]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                 </svg>
               </div>
               <p className="text-white font-semibold mb-1">Select a conversation</p>
-              <p className="text-[#555568] text-sm">Choose a conversation from the left</p>
+              <p className="text-[#8888a0] text-sm">Choose a conversation from the left</p>
             </div>
           )}
         </div>
