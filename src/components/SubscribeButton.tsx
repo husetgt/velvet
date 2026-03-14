@@ -30,10 +30,7 @@ export default function SubscribeButton({ creatorId, creatorName, price, fullWid
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to initiate subscription')
-      if (data.alreadyActive) {
-        router.refresh()
-        return
-      }
+      // alreadyActive removed — payment always required now
       setClientSecret(data.clientSecret)
     } catch (err: any) {
       setError(err.message)
@@ -54,10 +51,16 @@ export default function SubscribeButton({ creatorId, creatorName, price, fullWid
       <button
         onClick={handleClick}
         disabled={loading}
-        className={`${fullWidth ? 'w-full' : ''} px-6 py-2.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-50`}
+        className={`${fullWidth ? 'w-full' : ''} px-6 py-3 rounded-full font-semibold text-white text-sm transition-all duration-200 disabled:opacity-50 cursor-pointer select-none
+          hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(224,64,251,0.5)] active:scale-[0.98]`}
         style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
       >
-        {loading ? 'Loading...' : `Subscribe · $${price.toFixed(2)}/mo`}
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+            Loading...
+          </span>
+        ) : `Subscribe · $${price.toFixed(2)}/mo`}
       </button>
       {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
 

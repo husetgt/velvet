@@ -64,24 +64,10 @@ export async function POST(req: NextRequest) {
     const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent | undefined
 
     if (!paymentIntent?.client_secret) {
-      // Subscription may already be active (e.g. free trial or already paid)
-      // Mark as active in DB directly
-      await prisma.subscription.upsert({
-        where: { subscriberId_creatorId: { subscriberId: fan.id, creatorId } },
-        create: {
-          subscriberId: fan.id,
-          creatorId,
-          status: 'ACTIVE',
-          stripeSubscriptionId: subscription.id,
-          currentPeriodEnd: subscription.items?.data?.[0] ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null,
-        },
-        update: {
-          status: 'ACTIVE',
-          stripeSubscriptionId: subscription.id,
-          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        },
-      })
-      return NextResponse.json({ subscriptionId: subscription.id, alreadyActive: true })
+      // No payment intent means payment wasn't required — cancel the Stripe subscription
+      // and return an error. Payment is ALWAYS required.
+      await stripe.subscriptions.cancel(subscription.id)
+      return NextResponse.json({ error: 'Payment is required to subscribe. Please try again.' }, { status: 402 })
     }
 
     return NextResponse.json({
