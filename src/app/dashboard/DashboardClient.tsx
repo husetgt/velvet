@@ -434,6 +434,8 @@ export default function DashboardClient({ user, initialStats }: { user: User; in
     { href: '/notifications', label: 'Notifications', icon: <><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></> },
     { href: '/wallet', label: 'Wallet', icon: <><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></> },
     { href: `/${user.username}`, label: 'Profile', icon: <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></> },
+  ]
+  const SIDEBAR_BOTTOM = [
     { href: '/membership', label: 'Memberships & Billing', icon: <><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></> },
     { href: '/settings', label: 'Settings', icon: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></> },
   ]
@@ -462,13 +464,6 @@ export default function DashboardClient({ user, initialStats }: { user: User; in
             <polyline points="15 18 9 12 15 6" />
           </svg>
         </button>
-
-        {/* Logo */}
-        {!sidebarCollapsed && (
-          <div className="px-5 py-4 border-b border-[#1e1e21]">
-            <span className="text-xl font-black" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>velvet</span>
-          </div>
-        )}
 
         {/* User */}
         <div className={`flex items-center gap-3 px-4 py-4 border-b border-[#1e1e21] ${sidebarCollapsed ? 'justify-center' : ''}`}>
@@ -539,7 +534,20 @@ export default function DashboardClient({ user, initialStats }: { user: User; in
           ))}
         </nav>
 
-        <div className="px-2 pb-4">
+        <div className="px-2 pb-4 space-y-0.5">
+          {SIDEBAR_BOTTOM.map(({ href, label, icon }) => (
+            <a
+              key={href}
+              href={href}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all text-[#8888a0] hover:text-white ${sidebarCollapsed ? 'justify-center' : ''}`}
+              title={sidebarCollapsed ? label : undefined}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0">
+                {icon}
+              </svg>
+              {!sidebarCollapsed && <span className="text-sm font-medium">{label}</span>}
+            </a>
+          ))}
           <button
             onClick={handleSignOut}
             className={`flex items-center gap-3 rounded-lg px-3 py-2.5 w-full text-[#8888a0] hover:text-white transition-colors ${sidebarCollapsed ? 'justify-center' : ''}`}
