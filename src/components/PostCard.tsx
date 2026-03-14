@@ -100,12 +100,12 @@ function ImageCarousel({
   const [idx, setIdx] = useState(0)
 
   return (
-    <div className="relative w-full aspect-[4/5] max-h-[500px] bg-black overflow-hidden">
+    <div className="relative w-full aspect-video max-h-[480px] bg-black overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={urls[idx]}
         alt=""
-        className={`w-full h-full object-cover transition-all ${isBlurred ? 'blur-xl scale-105' : ''}`}
+        className={`w-full h-full object-contain transition-all ${isBlurred ? 'blur-xl scale-105' : ''}`}
       />
 
       {/* Subscribers-only badge — top-left */}
@@ -314,7 +314,7 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
         <div className="overflow-hidden">
           {isVideo ? (
             /* Video — always show, blurred if locked */
-            <div className="relative w-full aspect-[4/5] max-h-[500px] bg-black overflow-hidden">
+            <div className="relative w-full aspect-video max-h-[480px] bg-black overflow-hidden">
               <video
                 src={post.mediaUrls[0]}
                 className={`w-full h-full object-cover ${isBlurred ? 'blur-xl scale-105' : ''}`}
