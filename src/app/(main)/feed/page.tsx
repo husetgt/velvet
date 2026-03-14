@@ -105,7 +105,7 @@ async function FeedContent() {
     ...post,
     price: post.price ? Number(post.price) : null,
     createdAt: post.createdAt.toISOString(),
-    isUnlocked: !post.isLocked || subscribedCreatorIds.has(post.creatorId) || unlockedPostIds.has(post.id),
+    isUnlocked: !post.isLocked || post.creatorId === user.id || subscribedCreatorIds.has(post.creatorId) || unlockedPostIds.has(post.id),
   }))
 
   type RawCreator = {

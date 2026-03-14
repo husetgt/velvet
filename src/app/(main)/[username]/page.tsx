@@ -101,7 +101,7 @@ export default async function UserProfilePage({ params }: Props) {
 
   const postsWithAccess = visiblePosts.map((post: typeof profileUser.posts[number]) => ({
     ...post,
-    isUnlocked: !post.isLocked || isSubscribed || unlockedPostIds.includes(post.id),
+    isUnlocked: !post.isLocked || isOwnProfile || isSubscribed || unlockedPostIds.includes(post.id),
     price: post.price ? Number(post.price) : null,
     createdAt: post.createdAt.toISOString(),
     creator: {
