@@ -146,11 +146,7 @@ function LoginForm() {
             </Link>
           </p>
 
-          <div className="mt-4 text-center">
-            <Link href="/creator-login" className="text-xs text-[#555568] hover:text-[#8888a0] transition-colors">
-              Creator? Sign in here →
-            </Link>
-          </div>
+
         </div>
       </div>
     </div>

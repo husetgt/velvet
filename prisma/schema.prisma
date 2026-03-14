@@ -18,6 +18,7 @@ model User {
   role              Role     @default(FAN)
   isCreator         Boolean  @default(false)
   coverUrl          String?
+  introVideoUrl     String?
   subscriptionPrice Decimal? @db.Decimal(10, 2)
   stripePriceId     String?
   stripeCustomerId  String?
@@ -30,6 +31,8 @@ model User {
   subscribers          Subscription[]  @relation("creator")
   sentMessages         Message[]       @relation("sender")
   receivedMessages     Message[]       @relation("receiver")
+  conversationMetasAsCreator ConversationMeta[] @relation("conversationCreator")
+  conversationMetasAsFan     ConversationMeta[] @relation("conversationFan")
   unlockedPosts        PostUnlock[]
   tipsGiven            Tip[]           @relation("tipper")
   tipsReceived         Tip[]           @relation("creator")
@@ -71,16 +74,33 @@ model Subscription {
 }
 
 model Message {
-  id         String   @id @default(cuid())
-  senderId   String
-  receiverId String
-  content    String
-  mediaUrl   String?
-  isRead     Boolean  @default(false)
-  createdAt  DateTime @default(now())
+  id            String   @id @default(cuid())
+  senderId      String
+  receiverId    String
+  content       String
+  mediaUrl      String?
+  mediaPrice    Decimal? @db.Decimal(10, 2)
+  isMediaLocked Boolean  @default(false)
+  isRead        Boolean  @default(false)
+  createdAt     DateTime @default(now())
 
   sender   User @relation("sender", fields: [senderId], references: [id], onDelete: Cascade)
   receiver User @relation("receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model ConversationMeta {
+  id        String   @id @default(cuid())
+  creatorId String
+  fanId     String
+  nickname  String?
+  notes     Json?    @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator User @relation("conversationCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  fan     User @relation("conversationFan", fields: [fanId], references: [id], onDelete: Cascade)
+
+  @@unique([creatorId, fanId])
 }
 
 model PostUnlock {

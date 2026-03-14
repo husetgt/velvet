@@ -13,34 +13,33 @@ export async function POST(req: NextRequest) {
     const { data: { user: authUser } } = await supabase.auth.getUser()
     if (!authUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+    // Ensure bucket exists
+    const { data: buckets } = await serviceSupabase.storage.listBuckets()
+    if (!buckets?.find((b) => b.name === 'intros')) {
+      await serviceSupabase.storage.createBucket('intros', { public: true })
+    }
+
     const formData = await req.formData()
     const file = formData.get('file') as File | null
     if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
 
-    // Ensure the bucket exists
-    const { data: buckets } = await serviceSupabase.storage.listBuckets()
-    if (!buckets?.find((b) => b.name === 'covers')) {
-      await serviceSupabase.storage.createBucket('covers', { public: true })
-    }
-
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
-    const path = `${authUser.id}/cover.${ext}`
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'mp4'
+    const path = `${authUser.id}/intro.${ext}`
     const fileBuffer = Buffer.from(await file.arrayBuffer())
 
     const { error } = await serviceSupabase.storage
-      .from('covers')
+      .from('intros')
       .upload(path, fileBuffer, { contentType: file.type, upsert: true })
 
     if (error) {
-      console.error('Cover upload error:', error)
+      console.error('Intro upload error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    const { data: { publicUrl } } = serviceSupabase.storage.from('covers').getPublicUrl(path)
-
+    const { data: { publicUrl } } = serviceSupabase.storage.from('intros').getPublicUrl(path)
     return NextResponse.json({ url: publicUrl })
   } catch (err: unknown) {
-    console.error('Cover upload handler error:', err)
+    console.error('Intro upload handler error:', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

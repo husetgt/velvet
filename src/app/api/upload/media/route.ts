@@ -25,6 +25,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No files provided' }, { status: 400 })
     }
 
+    // Ensure the bucket exists
+    const { data: buckets } = await serviceSupabase.storage.listBuckets()
+    if (!buckets?.find((b) => b.name === 'media')) {
+      await serviceSupabase.storage.createBucket('media', { public: true })
+    }
+
     const urls: string[] = []
 
     for (const file of files) {

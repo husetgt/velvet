@@ -65,9 +65,9 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
     const body = await req.json()
-    const { receiverId, content, mediaUrl, price } = body
+    const { receiverId, content, mediaUrl, price, mediaPrice, isMediaLocked } = body
 
-    if (!receiverId || !content?.trim()) {
+    if (!receiverId || (!content?.trim() && !mediaUrl)) {
       return NextResponse.json({ error: 'Missing receiverId or content' }, { status: 400 })
     }
 
@@ -89,7 +89,9 @@ export async function POST(req: NextRequest) {
 
     // If price is set, this is a PPV message — only creators can send them
     const parsedPrice = price && Number(price) > 0 ? Number(price) : null
-    if (parsedPrice && !user.isCreator) {
+    const parsedMediaPrice = mediaPrice && Number(mediaPrice) > 0 ? Number(mediaPrice) : null
+    const effectivePrice = parsedPrice || parsedMediaPrice
+    if (effectivePrice && !user.isCreator) {
       return NextResponse.json({ error: 'Only creators can send PPV messages' }, { status: 403 })
     }
 
@@ -97,18 +99,18 @@ export async function POST(req: NextRequest) {
       data: {
         senderId: user.id,
         receiverId,
-        content: content.trim(),
+        content: content?.trim() || '',
         mediaUrl: mediaUrl || null,
-        // price stored in content metadata for now — schema doesn't have price on Message
-        // We embed the price in content as a workaround until migration runs
+        mediaPrice: effectivePrice ? effectivePrice : null,
+        isMediaLocked: isMediaLocked === true || (!!effectivePrice && !!mediaUrl),
       },
       include: {
         sender: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
       },
     })
 
-    // Attach price to response for the UI (not persisted without migration)
-    const responseMessage = parsedPrice ? { ...message, price: parsedPrice } : message
+    // Attach price to response for the UI
+    const responseMessage = effectivePrice ? { ...message, price: effectivePrice } : message
 
     return NextResponse.json({ message: responseMessage }, { status: 201 })
   } catch (err: unknown) {

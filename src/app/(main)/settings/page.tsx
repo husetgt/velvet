@@ -37,9 +37,13 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default function SettingsPage() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const introVideoInputRef = useRef<HTMLInputElement>(null)
   const [user, setUser] = useState<UserInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState({ displayName: '', bio: '', avatarUrl: '', subscriptionPrice: '' })
+  const [introVideoUrl, setIntroVideoUrl] = useState<string | null>(null)
+  const [uploadingIntro, setUploadingIntro] = useState(false)
+  const [introError, setIntroError] = useState('')
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -67,6 +71,7 @@ export default function SettingsPage() {
             avatarUrl: data.user.avatarUrl ?? '',
             subscriptionPrice: data.user.subscriptionPrice ? String(data.user.subscriptionPrice) : '',
           })
+          if (data.user.introVideoUrl) setIntroVideoUrl(data.user.introVideoUrl)
           if (data.user.role === 'CREATOR') {
             fetchLinks()
           }
@@ -164,6 +169,46 @@ export default function SettingsPage() {
     } finally {
       setUploading(false)
     }
+  }
+
+  const handleIntroVideoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadingIntro(true)
+    setIntroError('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await fetch('/api/upload/intro', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      const url = data.url
+      setIntroVideoUrl(url)
+      // Save to DB
+      const saveRes = await fetch('/api/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ introVideoUrl: url }),
+      })
+      if (!saveRes.ok) {
+        const sd = await saveRes.json()
+        throw new Error(sd.error || 'Failed to save')
+      }
+    } catch (err: unknown) {
+      setIntroError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setUploadingIntro(false)
+      if (introVideoInputRef.current) introVideoInputRef.current.value = ''
+    }
+  }
+
+  const handleRemoveIntroVideo = async () => {
+    setIntroVideoUrl(null)
+    await fetch('/api/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ introVideoUrl: null }),
+    })
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -487,6 +532,70 @@ export default function SettingsPage() {
               {sentLinks.length === 0 && receivedLinks.length === 0 && acceptedLinks.length === 0 && (
                 <p className="text-[#555568] text-xs text-center py-4">No linked accounts yet</p>
               )}
+            </Section>
+          )}
+
+          {/* Intro Video (Creator only) */}
+          {user.isCreator && (
+            <Section title="Intro Video">
+              <p className="text-[#8888a0] text-sm mb-4">
+                Upload a short intro video (max 60s) that appears on your profile and in the Discover feed.
+              </p>
+              {introError && (
+                <div className="mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">{introError}</div>
+              )}
+              {introVideoUrl ? (
+                <div className="space-y-3">
+                  <div className="relative rounded-2xl overflow-hidden bg-black aspect-video max-w-sm">
+                    {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                    <video
+                      src={introVideoUrl}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => introVideoInputRef.current?.click()}
+                      disabled={uploadingIntro}
+                      className="px-4 py-2 rounded-xl text-sm font-medium text-white border border-[#2a2a30] hover:border-[#e040fb44] transition-all disabled:opacity-50"
+                    >
+                      {uploadingIntro ? 'Uploading…' : 'Replace video'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleRemoveIntroVideo}
+                      className="px-4 py-2 rounded-xl text-sm font-medium text-[#8888a0] hover:text-red-400 transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => introVideoInputRef.current?.click()}
+                  disabled={uploadingIntro}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-opacity text-sm"
+                  style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                    <polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+                  </svg>
+                  {uploadingIntro ? 'Uploading…' : 'Upload intro video'}
+                </button>
+              )}
+              <input
+                ref={introVideoInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={handleIntroVideoChange}
+              />
             </Section>
           )}
 

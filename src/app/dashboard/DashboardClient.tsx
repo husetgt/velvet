@@ -348,14 +348,14 @@ function ContentTabContent({ stats }: { stats: Stats }) {
 
 // ───────────────────────────────────────────────────────────────────────────
 
-export default function DashboardClient({ user }: { user: User }) {
+export default function DashboardClient({ user, initialStats }: { user: User; initialStats?: Stats | null }) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<FilterTab>('earnings')
   const [period, setPeriod] = useState<Period>('all')
   const [periodOpen, setPeriodOpen] = useState(false)
-  const [stats, setStats] = useState<Stats | null>(null)
-  const [loadingStats, setLoadingStats] = useState(true)
+  const [stats, setStats] = useState<Stats | null>(initialStats ?? null)
+  const [loadingStats, setLoadingStats] = useState(initialStats == null)
   const [refreshing, setRefreshing] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [showNewPost, setShowNewPost] = useState(false)
@@ -380,7 +380,10 @@ export default function DashboardClient({ user }: { user: User }) {
     }
   }, [])
 
-  useEffect(() => { fetchStats() }, [fetchStats])
+  useEffect(() => {
+    if (initialStats == null) fetchStats()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchStats])
 
   // Read ?tab param from URL and set active tab
   useEffect(() => {

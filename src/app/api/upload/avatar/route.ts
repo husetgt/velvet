@@ -25,6 +25,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
+    // Ensure the bucket exists
+    const { data: buckets } = await serviceSupabase.storage.listBuckets()
+    if (!buckets?.find((b) => b.name === 'avatars')) {
+      await serviceSupabase.storage.createBucket('avatars', { public: true })
+    }
+
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
     const path = `${authUser.id}/avatar.${ext}`
 
