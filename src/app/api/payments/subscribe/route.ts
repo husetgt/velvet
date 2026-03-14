@@ -73,12 +73,12 @@ export async function POST(req: NextRequest) {
           creatorId,
           status: 'ACTIVE',
           stripeSubscriptionId: subscription.id,
-          currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+          currentPeriodEnd: subscription.items?.data?.[0] ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : null,
         },
         update: {
           status: 'ACTIVE',
           stripeSubscriptionId: subscription.id,
-          currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+          currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         },
       })
       return NextResponse.json({ subscriptionId: subscription.id, alreadyActive: true })
