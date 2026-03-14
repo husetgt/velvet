@@ -14,6 +14,15 @@ interface UserInfo {
   subscriptionPrice?: number | null
 }
 
+interface AccountLinkRecord {
+  id: string
+  requesterId: string
+  targetId: string
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED'
+  requester: { id: string; displayName: string; username: string; avatarUrl: string | null }
+  target: { id: string; displayName: string; username: string; avatarUrl: string | null }
+}
+
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] overflow-hidden">
@@ -37,6 +46,15 @@ export default function SettingsPage() {
   const [error, setError] = useState('')
   const [signingOut, setSigningOut] = useState(false)
 
+  // Account linker state
+  const [linkUsername, setLinkUsername] = useState('')
+  const [linkSending, setLinkSending] = useState(false)
+  const [linkError, setLinkError] = useState('')
+  const [linkSuccess, setLinkSuccess] = useState('')
+  const [sentLinks, setSentLinks] = useState<AccountLinkRecord[]>([])
+  const [receivedLinks, setReceivedLinks] = useState<AccountLinkRecord[]>([])
+  const [acceptedLinks, setAcceptedLinks] = useState<AccountLinkRecord[]>([])
+
   useEffect(() => {
     fetch('/api/auth/me')
       .then((r) => r.json())
@@ -49,11 +67,71 @@ export default function SettingsPage() {
             avatarUrl: data.user.avatarUrl ?? '',
             subscriptionPrice: data.user.subscriptionPrice ? String(data.user.subscriptionPrice) : '',
           })
+          if (data.user.role === 'CREATOR') {
+            fetchLinks()
+          }
         }
         setLoading(false)
       })
       .catch(() => setLoading(false))
   }, [])
+
+  const fetchLinks = () => {
+    fetch('/api/account-links/all')
+      .then(r => r.json())
+      .then(d => {
+        if (d.sent) setSentLinks(d.sent)
+        if (d.received) setReceivedLinks(d.received)
+        if (d.accepted) setAcceptedLinks(d.accepted)
+      })
+      .catch(() => {})
+  }
+
+  const handleLinkRequest = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!linkUsername.trim()) return
+    setLinkSending(true)
+    setLinkError('')
+    setLinkSuccess('')
+    try {
+      const res = await fetch('/api/account-links/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUsername: linkUsername.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send request')
+      setLinkSuccess(`Request sent to @${linkUsername.trim()}`)
+      setLinkUsername('')
+      fetchLinks()
+    } catch (err: unknown) {
+      setLinkError(err instanceof Error ? err.message : 'Failed')
+    } finally {
+      setLinkSending(false)
+    }
+  }
+
+  const handleAcceptLink = async (linkId: string) => {
+    try {
+      const res = await fetch('/api/account-links/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkId }),
+      })
+      if (res.ok) fetchLinks()
+    } catch (_) {}
+  }
+
+  const handleRejectLink = async (linkId: string) => {
+    try {
+      const res = await fetch('/api/account-links/reject', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ linkId }),
+      })
+      if (res.ok) fetchLinks()
+    } catch (_) {}
+  }
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -293,6 +371,124 @@ export default function SettingsPage() {
               </button>
             </form>
           </Section>
+
+          {/* Linked Accounts (Creator only) */}
+          {user.isCreator && (
+            <Section title="Linked Accounts">
+              <p className="text-[#8888a0] text-sm mb-4">Link your creator accounts to quickly switch between them from the sidebar.</p>
+
+              {/* Send request */}
+              <form onSubmit={handleLinkRequest} className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={linkUsername}
+                  onChange={e => setLinkUsername(e.target.value)}
+                  placeholder="Enter username to link…"
+                  className={`${inputCls} flex-1`}
+                />
+                <button
+                  type="submit"
+                  disabled={linkSending || !linkUsername.trim()}
+                  className="px-4 py-2.5 rounded-xl font-semibold text-white text-sm disabled:opacity-50 hover:opacity-90 transition-opacity shrink-0"
+                  style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+                >
+                  {linkSending ? '…' : 'Send Request'}
+                </button>
+              </form>
+              {linkSuccess && <p className="text-green-400 text-xs mb-3">{linkSuccess}</p>}
+              {linkError && <p className="text-red-400 text-xs mb-3">{linkError}</p>}
+
+              {/* Pending received */}
+              {receivedLinks.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-[#8888a0] uppercase tracking-wider mb-2">Pending Requests</h4>
+                  <div className="space-y-2">
+                    {receivedLinks.map(link => (
+                      <div key={link.id} className="flex items-center justify-between p-3 rounded-xl bg-[#1a1a1d] border border-[#2a2a30]">
+                        <div>
+                          <span className="text-white text-sm font-semibold">{link.requester.displayName}</span>
+                          <span className="text-[#8888a0] text-xs ml-1.5">@{link.requester.username}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleAcceptLink(link.id)}
+                            className="px-3 py-1 rounded-lg text-xs font-semibold text-white"
+                            style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={() => handleRejectLink(link.id)}
+                            className="px-3 py-1 rounded-lg text-xs font-semibold text-[#8888a0] border border-[#2a2a30] hover:text-red-400 hover:border-red-500/40 transition-colors"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pending sent */}
+              {sentLinks.length > 0 && (
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-[#8888a0] uppercase tracking-wider mb-2">Sent Requests</h4>
+                  <div className="space-y-2">
+                    {sentLinks.map(link => (
+                      <div key={link.id} className="flex items-center justify-between p-3 rounded-xl bg-[#1a1a1d] border border-[#2a2a30]">
+                        <div>
+                          <span className="text-white text-sm font-semibold">{link.target.displayName}</span>
+                          <span className="text-[#8888a0] text-xs ml-1.5">@{link.target.username}</span>
+                          <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">Pending</span>
+                        </div>
+                        <button
+                          onClick={() => handleRejectLink(link.id)}
+                          className="text-xs text-[#8888a0] hover:text-red-400 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Accepted */}
+              {acceptedLinks.length > 0 && (
+                <div>
+                  <h4 className="text-xs font-semibold text-[#8888a0] uppercase tracking-wider mb-2">Linked Accounts</h4>
+                  <div className="space-y-2">
+                    {acceptedLinks.map(link => {
+                      const other = link.requesterId === user.id ? link.target : link.requester
+                      const otherInitials = other.displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+                      return (
+                        <div key={link.id} className="flex items-center gap-3 p-3 rounded-xl bg-[#1a1a1d] border border-[#2a2a30]">
+                          {other.avatarUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={other.avatarUrl} alt={other.displayName} className="w-8 h-8 rounded-full object-cover shrink-0" />
+                          ) : (
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
+                              {otherInitials}
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <span className="text-white text-sm font-semibold">{other.displayName}</span>
+                            <span className="text-[#8888a0] text-xs ml-1.5">@{other.username}</span>
+                          </div>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20">Linked</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {sentLinks.length === 0 && receivedLinks.length === 0 && acceptedLinks.length === 0 && (
+                <p className="text-[#555568] text-xs text-center py-4">No linked accounts yet</p>
+              )}
+            </Section>
+          )}
 
           {/* Account section */}
           <Section title="Account">

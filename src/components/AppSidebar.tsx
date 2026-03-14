@@ -1,9 +1,16 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+
+interface LinkedAccount {
+  id: string
+  displayName: string
+  username: string
+  avatarUrl?: string | null
+}
 
 interface AppSidebarProps {
   user: {
@@ -12,12 +19,17 @@ interface AppSidebarProps {
     role: string
     avatarUrl?: string | null
   }
+  onNewPost?: () => void
 }
 
-export default function AppSidebar({ user }: AppSidebarProps) {
+export default function AppSidebar({ user, onNewPost }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
+  const [linkedAccounts, setLinkedAccounts] = useState<LinkedAccount[]>([])
+  const [accountDropOpen, setAccountDropOpen] = useState(false)
+  const accountDropRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
+  const isCreator = user.role === 'CREATOR'
 
   useEffect(() => {
     fetch('/api/wallet/balance')
@@ -26,10 +38,35 @@ export default function AppSidebar({ user }: AppSidebarProps) {
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    if (isCreator) {
+      fetch('/api/account-links')
+        .then(r => r.json())
+        .then(d => { if (Array.isArray(d.links)) setLinkedAccounts(d.links) })
+        .catch(() => {})
+    }
+  }, [isCreator])
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (accountDropRef.current && !accountDropRef.current.contains(e.target as Node)) {
+        setAccountDropOpen(false)
+      }
+    }
+    if (accountDropOpen) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [accountDropOpen])
+
   const handleSignOut = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
     window.location.href = '/login'
+  }
+
+  const handleSwitchAccount = (username: string) => {
+    setAccountDropOpen(false)
+    window.location.href = `/login?switchTo=${encodeURIComponent(username)}`
   }
 
   const initials = user.displayName
@@ -48,7 +85,73 @@ export default function AppSidebar({ user }: AppSidebarProps) {
     icon: React.ReactNode
   }
 
-  const NAV_ITEMS: NavItem[] = [
+  const CREATOR_NAV_ITEMS: NavItem[] = [
+    {
+      href: '/dashboard',
+      label: 'Home',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      ),
+    },
+    {
+      href: '/dashboard?tab=posts',
+      label: 'Posts',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M9 3v18"/><path d="M3 9h18"/>
+        </svg>
+      ),
+    },
+    {
+      href: '/messages',
+      label: 'Messages',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      ),
+    },
+    {
+      href: '/notifications',
+      label: 'Notifications',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      ),
+    },
+    {
+      href: '/wallet',
+      label: 'Wallet',
+      badge: balanceDollars,
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0">
+          <path d="M20 12V22H4V12"/>
+          <path d="M22 7H2v5h20V7z"/>
+          <path d="M12 22V7"/>
+          <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+          <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+        </svg>
+      ),
+    },
+    {
+      href: `/${user.username}`,
+      label: 'Profile',
+      icon: (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+      ),
+    },
+  ]
+
+  const FAN_NAV_ITEMS: NavItem[] = [
     {
       href: '/feed',
       label: 'Home',
@@ -126,6 +229,8 @@ export default function AppSidebar({ user }: AppSidebarProps) {
     },
   ]
 
+  const NAV_ITEMS = isCreator ? CREATOR_NAV_ITEMS : FAN_NAV_ITEMS
+
   const BOTTOM_ITEMS = [
     {
       href: '/settings',
@@ -138,6 +243,14 @@ export default function AppSidebar({ user }: AppSidebarProps) {
       ),
     },
   ]
+
+  const isNavActive = (href: string) => {
+    if (href.includes('?')) {
+      return pathname + (typeof window !== 'undefined' ? window.location.search : '') === href
+        || pathname === href.split('?')[0]
+    }
+    return pathname === href || (href !== '/' && pathname.startsWith(href + '/'))
+  }
 
   return (
     <aside
@@ -168,33 +281,115 @@ export default function AppSidebar({ user }: AppSidebarProps) {
         </svg>
       </button>
 
-      {/* User profile */}
-      <div className={`flex items-center gap-3 px-4 py-5 ${collapsed ? 'justify-center px-0' : ''}`}>
-        {user.avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={user.avatarUrl} alt={user.displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />
-        ) : (
-          <div
-            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
-            style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
-          >
-            {initials}
-          </div>
-        )}
+      {/* User profile + account switcher */}
+      <div className={`flex items-center gap-3 px-4 py-5 ${collapsed ? 'justify-center px-0' : ''}`} ref={accountDropRef}>
+        <div className="relative">
+          {user.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.avatarUrl} alt={user.displayName} className="w-10 h-10 rounded-full object-cover shrink-0" />
+          ) : (
+            <div
+              className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+              style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+            >
+              {initials}
+            </div>
+          )}
+        </div>
         {!collapsed && (
-          <div className="min-w-0 overflow-hidden">
+          <div className="min-w-0 overflow-hidden flex-1">
             <div className="text-[14px] font-bold text-white truncate leading-tight">{user.displayName}</div>
             <div className="text-[12px] text-[#8888a0] truncate mt-0.5">@{user.username}</div>
+          </div>
+        )}
+        {/* Account switcher dropdown (creator only, when linked accounts exist) */}
+        {!collapsed && isCreator && linkedAccounts.length > 0 && (
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setAccountDropOpen(v => !v)}
+              className="p-1 rounded-md text-[#8888a0] hover:text-white hover:bg-[#2a2a30] transition-all"
+              title="Switch account"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            {accountDropOpen && (
+              <div
+                className="absolute top-full right-0 mt-1 w-48 rounded-xl border border-[#2a2a30] overflow-hidden shadow-2xl z-50"
+                style={{ background: '#1a1a1d' }}
+              >
+                <div className="px-3 py-2 border-b border-[#2a2a30]">
+                  <p className="text-[10px] text-[#8888a0] uppercase tracking-wider font-semibold">Switch account</p>
+                </div>
+                {linkedAccounts.map(acc => {
+                  const accInitials = acc.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                  return (
+                    <button
+                      key={acc.id}
+                      onClick={() => handleSwitchAccount(acc.username)}
+                      className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-[#2a2a30] transition-colors text-left"
+                    >
+                      {acc.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={acc.avatarUrl} alt={acc.displayName} className="w-7 h-7 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
+                          style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+                        >
+                          {accInitials}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold text-white truncate">{acc.displayName}</div>
+                        <div className="text-[10px] text-[#8888a0]">@{acc.username}</div>
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </div>
 
       <div className="mx-4 h-px bg-[#2a2a30] mb-2" />
 
+      {/* New Post button for creators */}
+      {isCreator && !collapsed && onNewPost && (
+        <div className="px-3 pb-2">
+          <button
+            onClick={onNewPost}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            New Post
+          </button>
+        </div>
+      )}
+      {isCreator && collapsed && onNewPost && (
+        <div className="px-2 pb-2">
+          <button
+            onClick={onNewPost}
+            title="New Post"
+            className="w-10 h-10 mx-auto flex items-center justify-center rounded-full text-white hover:opacity-90 transition-opacity"
+            style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
       {/* Main nav */}
       <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map(({ href, icon, label, badge }) => {
-          const isActive = pathname === href || pathname.startsWith(href + '/')
+          const isActive = isNavActive(href)
           return (
             <Link
               key={href}

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import Link from 'next/link'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import NewPostModal from '@/components/NewPostModal'
 
 interface User {
   id: string
@@ -29,6 +29,7 @@ interface Stats {
 }
 
 type FilterTab = 'earnings' | 'monthly' | 'subscribers' | 'content'
+type Period = 'all' | '90d' | '30d' | '7d'
 
 function Sparkline({ data, color = '#e040fb' }: { data: number[]; color?: string }) {
   if (!data.length) return null
@@ -53,7 +54,6 @@ function EarningsChart({ data }: { data: { month: string; earnings: number }[] }
   const [gross, setGross] = useState(true)
   const max = Math.max(...data.map(d => d.earnings), 0.01)
   const chartH = 180
-  const chartW = 100 // percentage-based
   const padY = 20
 
   return (
@@ -76,7 +76,6 @@ function EarningsChart({ data }: { data: { month: string; earnings: number }[] }
         </div>
       </div>
 
-      {/* SVG chart */}
       <div className="relative" style={{ height: chartH }}>
         <svg width="100%" height={chartH} viewBox={`0 0 800 ${chartH}`} preserveAspectRatio="none" className="absolute inset-0">
           <defs>
@@ -89,7 +88,6 @@ function EarningsChart({ data }: { data: { month: string; earnings: number }[] }
               <stop offset="100%" stopColor="#7c4dff" stopOpacity="0" />
             </linearGradient>
           </defs>
-          {/* Grid lines */}
           {[0, 0.25, 0.5, 0.75, 1].map(t => {
             const y = padY + (1 - t) * (chartH - padY * 2)
             return <line key={t} x1="0" y1={y} x2="800" y2={y} stroke="#2a2a30" strokeWidth="1" />
@@ -115,14 +113,12 @@ function EarningsChart({ data }: { data: { month: string; earnings: number }[] }
         </svg>
       </div>
 
-      {/* X-axis labels */}
       <div className="flex justify-between mt-2">
         {data.map((d, i) => (
           <span key={i} className="text-[10px] text-[#8888a0]">{d.month}</span>
         ))}
       </div>
 
-      {/* Breakdown table */}
       <div className="mt-6 border-t border-[#2a2a30] pt-4">
         <table className="w-full text-sm">
           <thead>
@@ -159,13 +155,216 @@ function UserAvatar({ name, avatarUrl, size = 8 }: { name: string; avatarUrl?: s
   )
 }
 
+// ── Tab content components ──────────────────────────────────────────────────
+
+function EarningsTabContent({ stats }: { stats: Stats }) {
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[#8888a0] text-xs font-semibold uppercase tracking-wider mb-1">Total Earnings</p>
+              <p className="text-3xl font-black text-white">${stats.totalEarnings.toFixed(2)}</p>
+              <p className="text-[#8888a0] text-xs mt-1">All time</p>
+            </div>
+            <Sparkline data={stats.monthlyChart.map(m => m.earnings)} />
+          </div>
+        </div>
+        <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[#8888a0] text-xs font-semibold uppercase tracking-wider mb-1">Active Subscribers</p>
+              <p className="text-3xl font-black text-white">{stats.activeSubs}</p>
+              <p className="text-[#8888a0] text-xs mt-1">{stats.totalSubs} all time</p>
+            </div>
+            <Sparkline data={[stats.activeSubs]} color="#7c4dff" />
+          </div>
+        </div>
+      </div>
+      <EarningsChart data={stats.monthlyChart} />
+      <div className="mt-4 rounded-2xl border border-[#2a2a30] bg-[#161618] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#2a2a30]">
+          <h3 className="font-bold text-white text-sm uppercase tracking-wider">Earnings Breakdown</h3>
+        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-[#1e1e21]">
+              {['Source', 'All Time', 'This Month'].map(h => (
+                <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-[#8888a0] uppercase tracking-wider">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#1e1e21]">
+            {[
+              { label: 'Subscriptions', total: stats.subEarnings, month: 0 },
+              { label: 'Post Unlocks', total: stats.postEarnings, month: 0 },
+              { label: 'Tips', total: stats.tipEarnings, month: 0 },
+              { label: 'Messages', total: stats.messageEarnings, month: 0 },
+            ].map(row => (
+              <tr key={row.label} className="hover:bg-[#1a1a1d] transition-colors">
+                <td className="px-6 py-3.5 text-white font-medium">{row.label}</td>
+                <td className="px-6 py-3.5 font-bold text-white">${row.total.toFixed(2)}</td>
+                <td className="px-6 py-3.5 text-[#8888a0]">${row.month.toFixed(2)}</td>
+              </tr>
+            ))}
+            <tr className="bg-[#1a1a1d]">
+              <td className="px-6 py-3.5 font-black text-white">Total</td>
+              <td className="px-6 py-3.5 font-black" style={{ color: '#e040fb' }}>${stats.totalEarnings.toFixed(2)}</td>
+              <td className="px-6 py-3.5 font-bold text-white">${stats.thisMonthEarnings.toFixed(2)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+function MonthlyTabContent({ stats }: { stats: Stats }) {
+  const monthDiff = stats.thisMonthEarnings - stats.lastMonthEarnings
+  const monthDiffSign = monthDiff >= 0 ? '+' : '-'
+  const monthDiffAbs = Math.abs(monthDiff)
+  const last6 = stats.monthlyChart.slice(-6)
+
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[#8888a0] text-xs font-semibold uppercase tracking-wider mb-1">This Month</p>
+              <p className="text-3xl font-black text-white">${stats.thisMonthEarnings.toFixed(2)}</p>
+              <div className="mt-1 flex items-center gap-1.5">
+                <span
+                  className="text-xs font-bold px-2 py-0.5 rounded-full"
+                  style={{
+                    background: monthDiff >= 0 ? 'rgba(74,222,128,0.12)' : 'rgba(239,68,68,0.12)',
+                    color: monthDiff >= 0 ? '#4ade80' : '#f87171',
+                  }}
+                >
+                  {monthDiffSign}${monthDiffAbs.toFixed(2)} vs last month
+                </span>
+              </div>
+            </div>
+            <Sparkline
+              data={last6.map(m => m.earnings)}
+              color={monthDiff >= 0 ? '#4ade80' : '#f87171'}
+            />
+          </div>
+        </div>
+        <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
+          <div>
+            <p className="text-[#8888a0] text-xs font-semibold uppercase tracking-wider mb-1">Last Month</p>
+            <p className="text-3xl font-black text-white">${stats.lastMonthEarnings.toFixed(2)}</p>
+          </div>
+        </div>
+      </div>
+      <EarningsChart data={last6} />
+    </>
+  )
+}
+
+function SubscribersTabContent({ stats }: { stats: Stats }) {
+  return (
+    <>
+      <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
+          <p className="text-[#8888a0] text-xs font-semibold uppercase tracking-wider mb-1">Active Subs</p>
+          <p className="text-3xl font-black text-white">{stats.activeSubs}</p>
+        </div>
+        <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
+          <p className="text-[#8888a0] text-xs font-semibold uppercase tracking-wider mb-1">Total Ever</p>
+          <p className="text-3xl font-black text-white">{stats.totalSubs}</p>
+        </div>
+        <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
+          <p className="text-[#8888a0] text-xs font-semibold uppercase tracking-wider mb-1">Churn</p>
+          <p className="text-3xl font-black text-white">
+            {stats.totalSubs > 0 ? ((1 - stats.activeSubs / stats.totalSubs) * 100).toFixed(1) : '0.0'}%
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#2a2a30]">
+          <h3 className="font-bold text-white text-sm uppercase tracking-wider">Top Spenders</h3>
+        </div>
+        {stats.topSpenders.length === 0 ? (
+          <p className="text-[#555568] text-xs text-center py-8">No subscribers yet</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-[#1e1e21]">
+                {['#', 'Fan', 'Total Spent'].map(h => (
+                  <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-[#8888a0] uppercase tracking-wider">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#1e1e21]">
+              {stats.topSpenders.map((s, i) => (
+                <tr key={s.id} className="hover:bg-[#1a1a1d] transition-colors">
+                  <td className="px-6 py-3.5 text-[#555568] text-xs">{i + 1}</td>
+                  <td className="px-6 py-3.5">
+                    <div className="flex items-center gap-2.5">
+                      <UserAvatar name={s.displayName} avatarUrl={s.avatarUrl} size={7} />
+                      <div>
+                        <p className="text-white text-xs font-semibold">{s.displayName}</p>
+                        <p className="text-[#8888a0] text-[10px]">@{s.username}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-3.5 font-bold" style={{ color: '#e040fb' }}>${s.total.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </>
+  )
+}
+
+function ContentTabContent({ stats }: { stats: Stats }) {
+  // No per-post breakdown in the stats API yet — show a placeholder with tip info
+  return (
+    <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-8 text-center">
+      <div
+        className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+        style={{ background: 'rgba(224,64,251,0.12)' }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="#e040fb" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M9 3v18"/><path d="M3 9h18"/>
+        </svg>
+      </div>
+      <p className="text-white font-semibold mb-1">Content Analytics</p>
+      <p className="text-[#8888a0] text-sm">
+        Per-post performance data coming soon. You have{' '}
+        <span className="text-white font-bold">${stats.postEarnings.toFixed(2)}</span> in post unlock earnings all time.
+      </p>
+    </div>
+  )
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+
 export default function DashboardClient({ user }: { user: User }) {
   const router = useRouter()
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('earnings')
+  const [activeTab, setActiveTab] = useState<FilterTab>('earnings')
+  const [period, setPeriod] = useState<Period>('all')
+  const [periodOpen, setPeriodOpen] = useState(false)
   const [stats, setStats] = useState<Stats | null>(null)
   const [loadingStats, setLoadingStats] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [showNewPost, setShowNewPost] = useState(false)
+  const periodRef = useRef<HTMLDivElement>(null)
+
+  const PERIOD_LABELS: Record<Period, string> = {
+    all: 'All time',
+    '90d': 'Last 90 days',
+    '30d': 'Last 30 days',
+    '7d': 'Last 7 days',
+  }
 
   const fetchStats = useCallback(async () => {
     try {
@@ -181,6 +380,17 @@ export default function DashboardClient({ user }: { user: User }) {
 
   useEffect(() => { fetchStats() }, [fetchStats])
 
+  // Close period dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (periodRef.current && !periodRef.current.contains(e.target as Node)) {
+        setPeriodOpen(false)
+      }
+    }
+    if (periodOpen) document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [periodOpen])
+
   const handleRefresh = () => {
     setRefreshing(true)
     fetchStats()
@@ -194,20 +404,6 @@ export default function DashboardClient({ user }: { user: User }) {
 
   const initials = user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
 
-  const monthDiff = stats ? stats.thisMonthEarnings - stats.lastMonthEarnings : 0
-  const monthDiffSign = monthDiff >= 0 ? '+' : '-'
-  const monthDiffAbs = Math.abs(monthDiff)
-
-  const SIDEBAR_NAV = [
-    { href: '/feed', label: 'Home', icon: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>, icon2: <polyline points="9 22 9 12 15 12 15 22"/> },
-    { href: '/explore', label: 'Discover', icon: <><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></> },
-    { href: '/notifications', label: 'Notifications', icon: <><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></> },
-    { href: '/messages', label: 'Chats', icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/> },
-    { href: '/dashboard', label: 'Earnings & Payouts', active: true, icon: <><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></> },
-    { href: '/wallet', label: 'Wallet', icon: <><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></> },
-    { href: '/settings', label: 'Settings', icon: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></> },
-  ]
-
   const FILTER_TABS: { id: FilterTab; label: string }[] = [
     { id: 'earnings', label: 'Earnings' },
     { id: 'monthly', label: 'Monthly Earnings' },
@@ -215,8 +411,27 @@ export default function DashboardClient({ user }: { user: User }) {
     { id: 'content', label: 'Content' },
   ]
 
+  // Creator-specific sidebar nav
+  const SIDEBAR_NAV = [
+    { href: '/dashboard', label: 'Home', active: true, icon: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>, icon2: <polyline points="9 22 9 12 15 12 15 22"/> },
+    { href: '/dashboard?tab=posts', label: 'Posts', icon: <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></> },
+    { href: '/messages', label: 'Messages', icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/> },
+    { href: '/notifications', label: 'Notifications', icon: <><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></> },
+    { href: '/wallet', label: 'Wallet', icon: <><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></> },
+    { href: `/${user.username}`, label: 'Profile', icon: <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></> },
+    { href: '/settings', label: 'Settings', icon: <><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></> },
+  ]
+
   return (
     <div className="flex h-screen bg-[#0d0d0f] text-white overflow-hidden">
+      {/* New Post Modal */}
+      {showNewPost && (
+        <NewPostModal
+          onClose={() => setShowNewPost(false)}
+          onPosted={() => { setShowNewPost(false); fetchStats() }}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         className="relative flex flex-col h-full shrink-0 transition-all duration-200 border-r border-[#1e1e21]"
@@ -263,10 +478,10 @@ export default function DashboardClient({ user }: { user: User }) {
         </div>
 
         {/* New Post button */}
-        {!sidebarCollapsed && (
+        {!sidebarCollapsed ? (
           <div className="px-3 pt-3">
-            <Link
-              href={`/${user.username}`}
+            <button
+              onClick={() => setShowNewPost(true)}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-2xl text-sm font-bold text-white hover:opacity-90 transition-opacity"
               style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
             >
@@ -274,13 +489,26 @@ export default function DashboardClient({ user }: { user: User }) {
                 <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
               </svg>
               New Post
-            </Link>
+            </button>
+          </div>
+        ) : (
+          <div className="flex justify-center pt-3">
+            <button
+              onClick={() => setShowNewPost(true)}
+              title="New Post"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white hover:opacity-90 transition-opacity"
+              style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
+                <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+            </button>
           </div>
         )}
 
         <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto">
           {SIDEBAR_NAV.map(({ href, label, icon, active }) => (
-            <Link
+            <a
               key={href}
               href={href}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all ${sidebarCollapsed ? 'justify-center' : ''} ${active ? 'text-[#e040fb]' : 'text-[#8888a0] hover:text-white'}`}
@@ -291,7 +519,7 @@ export default function DashboardClient({ user }: { user: User }) {
                 {icon}
               </svg>
               {!sidebarCollapsed && <span className="text-sm font-medium">{label}</span>}
-            </Link>
+            </a>
           ))}
         </nav>
 
@@ -317,8 +545,18 @@ export default function DashboardClient({ user }: { user: User }) {
           <div className="p-6 max-w-4xl">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-black text-white">Insights</h1>
+              <h1 className="text-2xl font-black text-white">Dashboard</h1>
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowNewPost(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-white border border-[#e040fb44] hover:border-[#e040fb88] transition-all"
+                  style={{ background: 'rgba(224,64,251,0.1)' }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-3.5 h-3.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  New Post
+                </button>
                 <span className="text-xs text-[#8888a0]">{Intl.DateTimeFormat().resolvedOptions().timeZone}</span>
                 <button
                   onClick={handleRefresh}
@@ -335,31 +573,52 @@ export default function DashboardClient({ user }: { user: User }) {
               </div>
             </div>
 
-            {/* Filter tabs + time range */}
+            {/* Filter tabs + period dropdown */}
             <div className="flex items-center justify-between mb-6 border-b border-[#2a2a30] pb-4">
               <div className="flex items-center gap-1">
                 {FILTER_TABS.map(tab => (
                   <button
                     key={tab.id}
-                    onClick={() => setActiveFilter(tab.id)}
+                    onClick={() => setActiveTab(tab.id)}
                     className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
-                      activeFilter === tab.id
-                        ? 'text-white'
-                        : 'text-[#8888a0] hover:text-white'
+                      activeTab === tab.id ? 'text-white' : 'text-[#8888a0] hover:text-white'
                     }`}
-                    style={activeFilter === tab.id ? { background: 'linear-gradient(135deg, #e040fb, #7c4dff)' } : {}}
+                    style={activeTab === tab.id ? { background: 'linear-gradient(135deg, #e040fb, #7c4dff)' } : {}}
                   >
                     {tab.label}
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-2 text-xs text-[#8888a0]">
-                <button className="px-3 py-1.5 rounded-lg border border-[#2a2a30] hover:border-[#e040fb44] transition-colors flex items-center gap-1.5">
-                  All time
+
+              {/* Period dropdown */}
+              <div className="relative" ref={periodRef}>
+                <button
+                  onClick={() => setPeriodOpen(v => !v)}
+                  className="px-3 py-1.5 rounded-lg border border-[#2a2a30] hover:border-[#e040fb44] transition-colors flex items-center gap-1.5 text-xs text-[#8888a0] hover:text-white"
+                >
+                  {PERIOD_LABELS[period]}
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
                 </button>
+                {periodOpen && (
+                  <div
+                    className="absolute right-0 top-full mt-1 w-40 rounded-xl border border-[#2a2a30] overflow-hidden shadow-2xl z-20"
+                    style={{ background: '#1a1a1d' }}
+                  >
+                    {(Object.entries(PERIOD_LABELS) as [Period, string][]).map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => { setPeriod(val); setPeriodOpen(false) }}
+                        className={`w-full text-left px-4 py-2.5 text-xs transition-colors ${
+                          period === val ? 'text-[#e040fb] font-semibold' : 'text-[#8888a0] hover:text-white hover:bg-[#2a2a30]'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -367,86 +626,15 @@ export default function DashboardClient({ user }: { user: User }) {
               <div className="flex items-center justify-center py-24">
                 <div className="w-8 h-8 rounded-full border-2 border-[#e040fb] border-t-transparent animate-spin" />
               </div>
-            ) : (
+            ) : stats ? (
               <>
-                {/* Stat cards */}
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  {/* Total earnings */}
-                  <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-[#8888a0] text-xs font-semibold uppercase tracking-wider mb-1">Earnings</p>
-                        <p className="text-3xl font-black text-white">${stats?.totalEarnings.toFixed(2) ?? '0.00'}</p>
-                        <p className="text-[#8888a0] text-xs mt-1">All time</p>
-                      </div>
-                      <Sparkline data={stats?.monthlyChart.map(m => m.earnings) ?? []} />
-                    </div>
-                  </div>
-
-                  {/* This month */}
-                  <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <p className="text-[#8888a0] text-xs font-semibold uppercase tracking-wider mb-1">This Month</p>
-                        <p className="text-3xl font-black text-white">${stats?.thisMonthEarnings.toFixed(2) ?? '0.00'}</p>
-                        <div className="mt-1 flex items-center gap-1.5">
-                          <span
-                            className="text-xs font-bold px-2 py-0.5 rounded-full"
-                            style={{
-                              background: monthDiff >= 0 ? 'rgba(74,222,128,0.12)' : 'rgba(239,68,68,0.12)',
-                              color: monthDiff >= 0 ? '#4ade80' : '#f87171',
-                            }}
-                          >
-                            {monthDiffSign}${monthDiffAbs.toFixed(2)} vs last month
-                          </span>
-                        </div>
-                      </div>
-                      <Sparkline
-                        data={stats?.monthlyChart.slice(-6).map(m => m.earnings) ?? []}
-                        color={monthDiff >= 0 ? '#4ade80' : '#f87171'}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Earnings over time chart */}
-                {stats && <EarningsChart data={stats.monthlyChart} />}
-
-                {/* Breakdown table */}
-                <div className="mt-4 rounded-2xl border border-[#2a2a30] bg-[#161618] overflow-hidden">
-                  <div className="px-6 py-4 border-b border-[#2a2a30]">
-                    <h3 className="font-bold text-white text-sm uppercase tracking-wider">Earnings Breakdown</h3>
-                  </div>
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-[#1e1e21]">
-                        {['Source', 'All Time', 'This Month'].map(h => (
-                          <th key={h} className="text-left px-6 py-3 text-xs font-semibold text-[#8888a0] uppercase tracking-wider">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#1e1e21]">
-                      {[
-                        { label: 'Subscriptions', total: stats?.subEarnings ?? 0, month: 0 },
-                        { label: 'Post Unlocks', total: stats?.postEarnings ?? 0, month: 0 },
-                        { label: 'Tips', total: stats?.tipEarnings ?? 0, month: 0 },
-                        { label: 'Messages', total: stats?.messageEarnings ?? 0, month: 0 },
-                      ].map(row => (
-                        <tr key={row.label} className="hover:bg-[#1a1a1d] transition-colors">
-                          <td className="px-6 py-3.5 text-white font-medium">{row.label}</td>
-                          <td className="px-6 py-3.5 font-bold text-white">${row.total.toFixed(2)}</td>
-                          <td className="px-6 py-3.5 text-[#8888a0]">${row.month.toFixed(2)}</td>
-                        </tr>
-                      ))}
-                      <tr className="bg-[#1a1a1d]">
-                        <td className="px-6 py-3.5 font-black text-white">Total</td>
-                        <td className="px-6 py-3.5 font-black" style={{ color: '#e040fb' }}>${stats?.totalEarnings.toFixed(2) ?? '0.00'}</td>
-                        <td className="px-6 py-3.5 font-bold text-white">${stats?.thisMonthEarnings.toFixed(2) ?? '0.00'}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                {activeTab === 'earnings' && <EarningsTabContent stats={stats} />}
+                {activeTab === 'monthly' && <MonthlyTabContent stats={stats} />}
+                {activeTab === 'subscribers' && <SubscribersTabContent stats={stats} />}
+                {activeTab === 'content' && <ContentTabContent stats={stats} />}
               </>
+            ) : (
+              <div className="text-center py-24 text-[#8888a0] text-sm">Failed to load stats. Try refreshing.</div>
             )}
           </div>
         </main>

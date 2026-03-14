@@ -10,6 +10,7 @@ function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const registered = searchParams.get('registered')
+  const switchTo = searchParams.get('switchTo')
   const [form, setForm] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -45,11 +46,23 @@ function LoginForm() {
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="velvet-gradient-text text-3xl font-bold">Velvet</Link>
-          <p className="text-[#8888a0] mt-2">Welcome back</p>
+          {switchTo ? (
+            <p className="text-[#8888a0] mt-2">Switching to <span className="text-[#e040fb] font-semibold">@{switchTo}</span></p>
+          ) : (
+            <p className="text-[#8888a0] mt-2">Welcome back</p>
+          )}
         </div>
 
         <div className="rounded-2xl p-8 border border-[#2a2a30] bg-[#161618]">
-          <h1 className="text-2xl font-bold mb-6">Sign in</h1>
+          <h1 className="text-2xl font-bold mb-6">
+            {switchTo ? `Sign in as @${switchTo}` : 'Sign in'}
+          </h1>
+
+          {switchTo && (
+            <div className="mb-4 p-3 rounded-lg border text-sm" style={{ background: 'rgba(224,64,251,0.08)', borderColor: 'rgba(224,64,251,0.25)', color: '#e040fb' }}>
+              Enter the password for <strong>@{switchTo}</strong> to switch accounts.
+            </div>
+          )}
 
           {registered && (
             <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">

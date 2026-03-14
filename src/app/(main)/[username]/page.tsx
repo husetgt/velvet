@@ -4,8 +4,8 @@ import { prisma } from '@/lib/prisma'
 import { createClient } from '@/lib/supabase/server'
 import SubscribeButton from '@/components/SubscribeButton'
 import TipButton from '@/components/TipButton'
-import PostCard from '@/components/PostCard'
 import EditProfileInline from '@/components/EditProfileInline'
+import ProfileTabs from '@/components/ProfileTabs'
 
 export const dynamic = 'force-dynamic'
 
@@ -297,32 +297,7 @@ export default async function UserProfilePage({ params }: Props) {
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex items-center border-b border-[#2a2a30] mb-6">
-          <div className="relative pb-3 mr-6">
-            <span className="velvet-gradient-text font-semibold text-sm">Posts</span>
-            <div
-              className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-              style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
-            />
-          </div>
-          <div className="relative pb-3 mr-6">
-            <span className="text-[#8888a0] font-medium text-sm">Media</span>
-          </div>
-        </div>
-
-        {/* Posts */}
-        {postsWithAccess.length === 0 ? (
-          <div className="text-center py-20 text-[#8888a0] text-sm">
-            No posts yet — check back soon.
-          </div>
-        ) : (
-          <div className="space-y-5 pb-16">
-            {postsWithAccess.map((post: (typeof postsWithAccess)[number]) => (
-              <PostCard key={post.id} post={post} isUnlocked={post.isUnlocked} />
-            ))}
-          </div>
-        )}
+        <ProfileTabs posts={postsWithAccess} isOwnProfile={isOwnProfile} />
       </div>
 
       {/* Sticky subscribe bar — mobile */}
