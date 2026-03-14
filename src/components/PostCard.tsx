@@ -279,20 +279,17 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
     <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-        <CreatorAvatar displayName={post.creator.displayName} avatarUrl={post.creator.avatarUrl} />
+        <a href={`/${post.creator.username}`}>
+          <CreatorAvatar displayName={post.creator.displayName} avatarUrl={post.creator.avatarUrl} />
+        </a>
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-white text-sm leading-tight">{post.creator.displayName}</div>
+          <a href={`/${post.creator.username}`} className="font-semibold text-white text-sm leading-tight hover:text-[#e040fb] transition-colors">
+            {post.creator.displayName}
+          </a>
           <div className="text-xs text-[#8888a0] mt-0.5">@{post.creator.username}</div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-[#8888a0]">{timestamp}</span>
-          <button className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8888a0] hover:text-white hover:bg-[#1e1e21] transition-colors">
-            <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-              <circle cx="12" cy="5" r="1.5" />
-              <circle cx="12" cy="12" r="1.5" />
-              <circle cx="12" cy="19" r="1.5" />
-            </svg>
-          </button>
         </div>
       </div>
 
