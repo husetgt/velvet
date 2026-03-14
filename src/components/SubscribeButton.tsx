@@ -30,6 +30,10 @@ export default function SubscribeButton({ creatorId, creatorName, price, fullWid
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to initiate subscription')
+      if (data.alreadyActive) {
+        router.refresh()
+        return
+      }
       setClientSecret(data.clientSecret)
     } catch (err: any) {
       setError(err.message)

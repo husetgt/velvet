@@ -28,12 +28,11 @@ function LoginForm() {
       })
       if (error) throw error
 
-      // Go straight to /feed for fast redirect — feed page handles creator redirect if needed
+      // Keep spinner showing until page navigates — don't setLoading(false) on success
       router.push('/feed')
-      router.refresh()
+      return
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')
-    } finally {
       setLoading(false)
     }
   }

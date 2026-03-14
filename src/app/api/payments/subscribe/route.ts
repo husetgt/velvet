@@ -61,7 +61,28 @@ export async function POST(req: NextRequest) {
     })
 
     const invoice = subscription.latest_invoice as Stripe.Invoice & { payment_intent?: Stripe.PaymentIntent }
-    const paymentIntent = invoice.payment_intent as Stripe.PaymentIntent
+    const paymentIntent = invoice?.payment_intent as Stripe.PaymentIntent | undefined
+
+    if (!paymentIntent?.client_secret) {
+      // Subscription may already be active (e.g. free trial or already paid)
+      // Mark as active in DB directly
+      await prisma.subscription.upsert({
+        where: { subscriberId_creatorId: { subscriberId: fan.id, creatorId } },
+        create: {
+          subscriberId: fan.id,
+          creatorId,
+          status: 'ACTIVE',
+          stripeSubscriptionId: subscription.id,
+          currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+        },
+        update: {
+          status: 'ACTIVE',
+          stripeSubscriptionId: subscription.id,
+          currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+        },
+      })
+      return NextResponse.json({ subscriptionId: subscription.id, alreadyActive: true })
+    }
 
     return NextResponse.json({
       clientSecret: paymentIntent.client_secret,
