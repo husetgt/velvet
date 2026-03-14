@@ -52,6 +52,10 @@ export default function NewPostModal({ onClose, onPosted }: NewPostModalProps) {
 
   const handleSubmit = async () => {
     if (!caption.trim() && files.length === 0) return
+    if (scheduleEnabled && (!scheduleDate.trim() || !scheduleTime.trim())) {
+      setError('Please fill in both the date and time before scheduling')
+      return
+    }
     setPosting(true)
     setError('')
     try {
@@ -103,7 +107,8 @@ export default function NewPostModal({ onClose, onPosted }: NewPostModalProps) {
     }
   }
 
-  const canPost = caption.trim().length > 0 || files.length > 0
+  const scheduleValid = !scheduleEnabled || (scheduleDate.trim() !== '' && scheduleTime.trim() !== '')
+  const canPost = (caption.trim().length > 0 || files.length > 0) && scheduleValid
 
   return (
     <div

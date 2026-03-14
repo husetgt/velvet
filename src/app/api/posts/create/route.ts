@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
     if (!user.isCreator) return NextResponse.json({ error: 'Only creators can post' }, { status: 403 })
 
     const { title, content, mediaUrls, isLocked, price, scheduledAt } = await req.json()
-    if (!content?.trim()) return NextResponse.json({ error: 'Content is required' }, { status: 400 })
+    const hasMedia = Array.isArray(mediaUrls) && mediaUrls.length > 0
+    if (!content?.trim() && !hasMedia) return NextResponse.json({ error: 'Please add a caption or media before posting' }, { status: 400 })
 
     // Parse scheduledAt safely
     let scheduledAtDate: Date | null = null
