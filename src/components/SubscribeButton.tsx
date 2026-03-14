@@ -10,9 +10,10 @@ interface SubscribeButtonProps {
   creatorId: string
   creatorName: string
   price: number
+  fullWidth?: boolean
 }
 
-export default function SubscribeButton({ creatorId, creatorName, price }: SubscribeButtonProps) {
+export default function SubscribeButton({ creatorId, creatorName, price, fullWidth }: SubscribeButtonProps) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [clientSecret, setClientSecret] = useState<string | null>(null)
@@ -49,7 +50,7 @@ export default function SubscribeButton({ creatorId, creatorName, price }: Subsc
       <button
         onClick={handleClick}
         disabled={loading}
-        className="px-6 py-2.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+        className={`${fullWidth ? 'w-full' : ''} px-6 py-2.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-50`}
         style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
       >
         {loading ? 'Loading...' : `Subscribe · $${price.toFixed(2)}/mo`}

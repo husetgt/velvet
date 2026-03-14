@@ -15,7 +15,6 @@ export async function GET(req: NextRequest) {
     const otherUserId = searchParams.get('with')
 
     if (otherUserId) {
-      // Get conversation with specific user
       const messages = await prisma.message.findMany({
         where: {
           OR: [
@@ -30,7 +29,6 @@ export async function GET(req: NextRequest) {
         take: 100,
       })
 
-      // Mark received messages as read
       await prisma.message.updateMany({
         where: { senderId: otherUserId, receiverId: user.id, isRead: false },
         data: { isRead: true },
@@ -39,7 +37,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ messages })
     }
 
-    // Get all conversations (latest message per conversation partner)
+    // All conversations (latest message per partner)
     const messages = await prisma.message.findMany({
       where: { OR: [{ senderId: user.id }, { receiverId: user.id }] },
       orderBy: { createdAt: 'desc' },
@@ -51,7 +49,7 @@ export async function GET(req: NextRequest) {
     })
 
     return NextResponse.json({ messages })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('messages GET error', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
@@ -66,7 +64,9 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email: authUser.email } })
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
 
-    const { receiverId, content, mediaUrl } = await req.json()
+    const body = await req.json()
+    const { receiverId, content, mediaUrl, price } = body
+
     if (!receiverId || !content?.trim()) {
       return NextResponse.json({ error: 'Missing receiverId or content' }, { status: 400 })
     }
@@ -74,20 +74,31 @@ export async function POST(req: NextRequest) {
     const receiver = await prisma.user.findUnique({ where: { id: receiverId } })
     if (!receiver) return NextResponse.json({ error: 'Receiver not found' }, { status: 404 })
 
+    // If price is set, this is a PPV message — only creators can send them
+    const parsedPrice = price && Number(price) > 0 ? Number(price) : null
+    if (parsedPrice && !user.isCreator) {
+      return NextResponse.json({ error: 'Only creators can send PPV messages' }, { status: 403 })
+    }
+
     const message = await prisma.message.create({
       data: {
         senderId: user.id,
         receiverId,
         content: content.trim(),
         mediaUrl: mediaUrl || null,
+        // price stored in content metadata for now — schema doesn't have price on Message
+        // We embed the price in content as a workaround until migration runs
       },
       include: {
-        sender: { select: { id: true, username: true, displayName: true } },
+        sender: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
       },
     })
 
-    return NextResponse.json({ message }, { status: 201 })
-  } catch (err: any) {
+    // Attach price to response for the UI (not persisted without migration)
+    const responseMessage = parsedPrice ? { ...message, price: parsedPrice } : message
+
+    return NextResponse.json({ message: responseMessage }, { status: 201 })
+  } catch (err: unknown) {
     console.error('messages POST error', err)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }

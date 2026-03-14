@@ -25,10 +25,20 @@ function LoginForm() {
         password: form.password,
       })
       if (error) throw error
-      router.push('/dashboard')
+
+      // Fetch user role to redirect appropriately
+      const meRes = await fetch('/api/auth/me')
+      const meData = await meRes.json()
+      const role = meData?.user?.role
+
+      if (role === 'CREATOR' || role === 'ADMIN') {
+        router.push('/dashboard')
+      } else {
+        router.push('/feed')
+      }
       router.refresh()
-    } catch (err: any) {
-      setError(err.message || 'Login failed')
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
       setLoading(false)
     }
@@ -75,7 +85,12 @@ function LoginForm() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-[#8888a0] mb-1.5">Password</label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-sm font-medium text-[#8888a0]">Password</label>
+                <Link href="/forgot-password" className="text-xs text-[#555568] hover:text-[#e040fb] transition-colors">
+                  Forgot password?
+                </Link>
+              </div>
               <input
                 type="password"
                 required

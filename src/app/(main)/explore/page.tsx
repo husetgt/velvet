@@ -26,96 +26,154 @@ export default async function ExplorePage() {
   return (
     <div className="flex h-screen bg-[#0d0d0f] text-white overflow-hidden">
       <AppSidebar
-        user={{
-          displayName: user.displayName,
-          username: user.username,
-          role: user.role,
-        }}
+        user={{ displayName: user.displayName, username: user.username, role: user.role }}
         activePath="/explore"
       />
 
       <main className="flex-1 overflow-auto">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-5xl mx-auto px-4 py-8">
+          {/* Header + search bar */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold">Explore Creators</h1>
-            <p className="text-[#8888a0] text-sm mt-1">Discover amazing creators to follow</p>
+            <h1 className="text-2xl font-bold mb-1">Discover</h1>
+            <p className="text-[#555568] text-sm mb-5">Find creators you&apos;ll love</p>
+            {/* Search bar (UI only) */}
+            <div className="relative max-w-md">
+              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+                <svg className="w-4 h-4 text-[#555568]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </div>
+              <input
+                type="text"
+                placeholder="Search creators…"
+                readOnly
+                className="w-full pl-11 pr-4 py-2.5 rounded-xl bg-[#161618] border border-[#2a2a30] text-white placeholder-[#555568] focus:outline-none cursor-default text-sm"
+              />
+            </div>
           </div>
 
           {creators.length === 0 ? (
-            <div className="text-center py-24 border border-dashed border-[#2a2a30] rounded-2xl">
+            <div className="flex flex-col items-center justify-center py-32 border border-dashed border-[#2a2a30] rounded-2xl">
               <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4"
+                className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
                 style={{ background: 'linear-gradient(135deg, rgba(224,64,251,0.15), rgba(124,77,255,0.15))' }}
               >
-                🔍
+                <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="url(#explore-empty)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <defs>
+                    <linearGradient id="explore-empty" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#e040fb" /><stop offset="100%" stopColor="#7c4dff" />
+                    </linearGradient>
+                  </defs>
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
               </div>
-              <p className="text-white font-semibold mb-2">No creators yet</p>
+              <p className="text-white font-semibold mb-1">No creators yet</p>
               <p className="text-[#8888a0] text-sm">Check back soon!</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {(creators as Array<{
-                id: string
-                displayName: string
-                username: string
-                bio: string | null
-                subscriptionPrice: { toNumber?: () => number } | null
-                _count: { subscribers: number; posts: number }
-              }>).map((creator) => (
-                <div
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              {(
+                creators as Array<{
+                  id: string
+                  displayName: string
+                  username: string
+                  bio: string | null
+                  coverUrl: string | null
+                  avatarUrl: string | null
+                  subscriptionPrice: { toNumber?: () => number } | null
+                  _count: { subscribers: number; posts: number }
+                }>
+              ).map((creator) => (
+                <Link
                   key={creator.id}
-                  className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5 hover:border-[#e040fb33] transition-all group"
+                  href={`/${creator.username}`}
+                  className="group relative rounded-2xl overflow-hidden border border-[#2a2a30] bg-[#161618] transition-all duration-200 hover:-translate-y-1 hover:border-[#e040fb44] hover:shadow-[0_8px_32px_rgba(224,64,251,0.12)] flex flex-col"
                 >
-                  {/* Avatar */}
-                  <div className="flex items-center gap-3 mb-4">
-                    <div
-                      className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-bold text-white shrink-0"
-                      style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
-                    >
-                      {creator.displayName.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-white truncate">{creator.displayName}</div>
-                      <div className="text-xs text-[#8888a0]">@{creator.username}</div>
-                    </div>
+                  {/* Banner */}
+                  <div
+                    className="h-32 w-full relative shrink-0"
+                    style={
+                      creator.coverUrl
+                        ? { background: `url(${creator.coverUrl}) center/cover` }
+                        : { background: 'linear-gradient(135deg, rgba(224,64,251,0.35), rgba(124,77,255,0.35))' }
+                    }
+                  >
+                    {/* Subtle dark overlay */}
+                    <div className="absolute inset-0 bg-black/20" />
                   </div>
 
-                  {/* Bio */}
-                  {creator.bio && (
-                    <p className="text-[#8888a0] text-sm leading-relaxed mb-4 line-clamp-2">
-                      {creator.bio}
-                    </p>
-                  )}
+                  {/* Card body */}
+                  <div className="px-4 pb-4 pt-0 flex flex-col flex-1">
+                    {/* Avatar overlapping banner */}
+                    <div className="relative -mt-8 mb-3">
+                      {creator.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={creator.avatarUrl}
+                          alt={creator.displayName}
+                          className="w-16 h-16 rounded-full object-cover border-4 border-[#161618] shadow-xl"
+                        />
+                      ) : (
+                        <div
+                          className="w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold text-white border-4 border-[#161618] shadow-xl"
+                          style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+                        >
+                          {creator.displayName.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
 
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 text-xs text-[#555568] mb-4">
-                    <span>
-                      <span className="text-white font-medium">
-                        {creator._count.subscribers.toLocaleString()}
-                      </span>{' '}
-                      subscribers
-                    </span>
-                    <span>
-                      <span className="text-white font-medium">{creator._count.posts}</span> posts
-                    </span>
-                  </div>
+                    {/* Name + handle */}
+                    <div className="mb-2">
+                      <div className="font-bold text-white text-sm leading-tight truncate">{creator.displayName}</div>
+                      <div className="text-xs text-[#555568] mt-0.5">@{creator.username}</div>
+                    </div>
 
-                  {/* Price + CTA */}
-                  <div className="flex items-center justify-between gap-2">
-                    {creator.subscriptionPrice && (
-                      <div className="px-2.5 py-1 rounded-lg text-xs font-medium text-[#e040fb] border border-[#e040fb33]">
-                        ${Number(creator.subscriptionPrice).toFixed(2)}/mo
-                      </div>
+                    {/* Bio */}
+                    {creator.bio && (
+                      <p className="text-[#8888a0] text-xs leading-relaxed line-clamp-2 mb-3">{creator.bio}</p>
                     )}
-                    <Link
-                      href={`/${creator.username}`}
-                      className="ml-auto px-4 py-2 rounded-xl text-xs font-semibold text-white hover:opacity-90 transition-opacity"
-                      style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
-                    >
-                      View Profile
-                    </Link>
+
+                    {/* Stats row */}
+                    <div className="flex items-center gap-3 text-xs text-[#555568] mt-auto mb-3">
+                      <span>
+                        <span className="text-white font-semibold">{creator._count.subscribers.toLocaleString()}</span>{' '}
+                        fans
+                      </span>
+                      <span className="text-[#2a2a30]">•</span>
+                      <span>
+                        <span className="text-white font-semibold">{creator._count.posts}</span>{' '}
+                        posts
+                      </span>
+                    </div>
+
+                    {/* Price + CTA */}
+                    <div className="flex items-center justify-between gap-2">
+                      {creator.subscriptionPrice ? (
+                        <div
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold"
+                          style={{
+                            background: 'linear-gradient(135deg, rgba(224,64,251,0.12), rgba(124,77,255,0.12))',
+                            border: '1px solid rgba(224,64,251,0.25)',
+                            color: '#e040fb',
+                          }}
+                        >
+                          ${Number(creator.subscriptionPrice).toFixed(2)}/mo
+                        </div>
+                      ) : (
+                        <div className="px-2.5 py-1 rounded-lg text-xs font-bold text-[#555568] border border-[#2a2a30]">
+                          Free
+                        </div>
+                      )}
+                      <div
+                        className="px-4 py-1.5 rounded-xl text-xs font-bold text-white hover:opacity-90 transition-opacity"
+                        style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+                      >
+                        Subscribe
+                      </div>
+                    </div>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}

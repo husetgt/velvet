@@ -34,24 +34,25 @@ export default async function FeedPage() {
       })
     : []
 
-  // Get unlocked post ids for current user
   const unlocks = await prisma.postUnlock.findMany({
     where: { userId: user.id, post: { creatorId: { in: creatorIds } } },
     select: { postId: true },
   })
   const unlockedPostIds = new Set(unlocks.map((u: { postId: string }) => u.postId))
 
-  const postsWithAccess = (posts as Array<{
-    id: string
-    title: string | null
-    content: string
-    mediaUrls: string[]
-    isLocked: boolean
-    price: { toNumber?: () => number } | null
-    likesCount: number
-    createdAt: Date
-    creator: { username: string; displayName: string; avatarUrl: string | null }
-  }>).map((post) => ({
+  const postsWithAccess = (
+    posts as Array<{
+      id: string
+      title: string | null
+      content: string
+      mediaUrls: string[]
+      isLocked: boolean
+      price: { toNumber?: () => number } | null
+      likesCount: number
+      createdAt: Date
+      creator: { username: string; displayName: string; avatarUrl: string | null }
+    }>
+  ).map((post) => ({
     ...post,
     price: post.price ? Number(post.price) : null,
     createdAt: post.createdAt.toISOString(),
@@ -66,46 +67,66 @@ export default async function FeedPage() {
   return (
     <div className="flex h-screen bg-[#0d0d0f] text-white overflow-hidden">
       <AppSidebar
-        user={{
-          displayName: user.displayName,
-          username: user.username,
-          role: user.role,
-        }}
+        user={{ displayName: user.displayName, username: user.username, role: user.role }}
         activePath="/feed"
       />
 
       <main className="flex-1 overflow-auto">
-        <div className="max-w-2xl mx-auto px-4 py-8">
-          <h1 className="text-2xl font-bold mb-6">Your Feed</h1>
-
-          {postsWithAccess.length === 0 ? (
-            <div className="text-center py-24 border border-dashed border-[#2a2a30] rounded-2xl">
-              <div
-                className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-4"
-                style={{ background: 'linear-gradient(135deg, rgba(224,64,251,0.15), rgba(124,77,255,0.15))' }}
+        {postsWithAccess.length === 0 ? (
+          /* Empty state — full viewport centred */
+          <div className="flex flex-col items-center justify-center min-h-full px-4 py-20">
+            {/* Icon */}
+            <div
+              className="w-20 h-20 rounded-3xl flex items-center justify-center mb-6 shadow-2xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(224,64,251,0.15), rgba(124,77,255,0.15))',
+                border: '1px solid rgba(224,64,251,0.2)',
+              }}
+            >
+              <svg
+                className="w-9 h-9"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="url(#feed-empty-grad)"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                🏠
-              </div>
-              <p className="text-white font-semibold mb-2">Your feed is empty</p>
-              <p className="text-[#8888a0] text-sm mb-6">
-                Follow some creators to see their posts here
-              </p>
-              <Link
-                href="/explore"
-                className="inline-block px-6 py-2.5 rounded-xl font-semibold text-white hover:opacity-90 transition-opacity text-sm"
-                style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
-              >
-                Explore Creators
-              </Link>
+                <defs>
+                  <linearGradient id="feed-empty-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#e040fb" />
+                    <stop offset="100%" stopColor="#7c4dff" />
+                  </linearGradient>
+                </defs>
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {postsWithAccess.map((post: typeof postsWithAccess[number]) => (
+
+            <h2 className="text-2xl font-bold text-white mb-2">Your feed is empty</h2>
+            <p className="text-[#8888a0] text-sm text-center max-w-xs leading-relaxed mb-8">
+              Subscribe to creators to see their content here
+            </p>
+            <Link
+              href="/explore"
+              className="inline-flex items-center gap-2 px-7 py-3 rounded-xl font-semibold text-white hover:opacity-90 transition-opacity shadow-lg shadow-[#e040fb22]"
+              style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              Explore Creators
+            </Link>
+          </div>
+        ) : (
+          <div className="max-w-xl mx-auto px-4 py-8">
+            <div className="space-y-5">
+              {postsWithAccess.map((post: (typeof postsWithAccess)[number]) => (
                 <PostCard key={post.id} post={post} isUnlocked={post.isUnlocked} />
               ))}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
     </div>
   )
