@@ -21,6 +21,7 @@ model User {
   subscriptionPrice Decimal? @db.Decimal(10, 2)
   stripePriceId     String?
   stripeCustomerId  String?
+  walletBalance     Int      @default(0)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

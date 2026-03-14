@@ -69,6 +69,21 @@ export async function POST(req: NextRequest) {
         break
       }
 
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        if (session.metadata?.type === 'wallet_deposit') {
+          const userId = session.metadata.userId
+          const amountCents = parseInt(session.metadata.amountCents || '0', 10)
+          if (userId && amountCents > 0) {
+            await prisma.user.update({
+              where: { id: userId },
+              data: { walletBalance: { increment: amountCents } },
+            })
+          }
+        }
+        break
+      }
+
       case 'payment_intent.succeeded': {
         const paymentIntent = event.data.object as Stripe.PaymentIntent
         const { type, postId, userId, creatorId, tipperId, message } = paymentIntent.metadata

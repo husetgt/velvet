@@ -3,7 +3,6 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import PostCard from '@/components/PostCard'
-import AppSidebar from '@/components/AppSidebar'
 
 export default async function FeedPage() {
   const supabase = await createClient()
@@ -78,13 +77,7 @@ export default async function FeedPage() {
   }))
 
   return (
-    <div className="flex min-h-screen bg-[#0d0d0f] text-white">
-      <AppSidebar
-        user={{ displayName: user.displayName, username: user.username, role: user.role, avatarUrl: user.avatarUrl }}
-        activePath="/feed"
-      />
-
-      <main className="flex-1 overflow-auto">
+    <div className="flex-1 overflow-auto">
         <div className="max-w-2xl mx-auto px-4 py-6">
           {/* Page header */}
           <div className="flex items-center justify-between mb-4">
@@ -159,7 +152,6 @@ export default async function FeedPage() {
             </div>
           )}
         </div>
-      </main>
     </div>
   )
 }

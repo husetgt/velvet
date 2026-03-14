@@ -36,8 +36,24 @@ export async function POST(req: NextRequest) {
     })
     if (existing) return NextResponse.json({ error: 'Already unlocked' }, { status: 400 })
 
-    const customerId = await getOrCreateStripeCustomer(fan.id, fan.email)
     const amountCents = Math.round(Number(post.price) * 100)
+
+    // Try wallet first
+    if (fan.walletBalance >= amountCents) {
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: fan.id },
+          data: { walletBalance: { decrement: amountCents } },
+        }),
+        prisma.postUnlock.create({
+          data: { userId: fan.id, postId, paidPrice: post.price },
+        }),
+      ])
+      return NextResponse.json({ success: true, method: 'wallet' })
+    }
+
+    // Fall back to Stripe PaymentIntent
+    const customerId = await getOrCreateStripeCustomer(fan.id, fan.email)
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amountCents,
@@ -46,9 +62,9 @@ export async function POST(req: NextRequest) {
       metadata: { type: 'unlock', postId, userId: fan.id },
     })
 
-    return NextResponse.json({ clientSecret: paymentIntent.client_secret })
-  } catch (err: any) {
+    return NextResponse.json({ clientSecret: paymentIntent.client_secret, method: 'stripe' })
+  } catch (err: unknown) {
     console.error('Unlock error:', err)
-    return NextResponse.json({ error: err.message || 'Internal error' }, { status: 500 })
+    return NextResponse.json({ error: err instanceof Error ? err.message : 'Internal error' }, { status: 500 })
   }
 }

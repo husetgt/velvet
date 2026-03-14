@@ -22,7 +22,80 @@ export default async function CreatorProfilePage({ params }: Props) {
     },
   })
 
-  if (!creator || !creator.isCreator) notFound()
+  if (!creator) notFound()
+
+  // Fan profile view
+  if (!creator.isCreator) {
+    const supabase = await createClient()
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser()
+
+    let currentUser = null
+    if (authUser?.email) {
+      currentUser = await prisma.user.findUnique({ where: { email: authUser.email } })
+    }
+
+    const fanInitials = creator.displayName
+      .split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+
+    return (
+      <div className="min-h-screen bg-[#0d0d0f] text-white">
+        <AppNavbar
+          user={currentUser ? { displayName: currentUser.displayName, username: currentUser.username, role: currentUser.role, avatarUrl: currentUser.avatarUrl } : null}
+          unreadMessages={0}
+          unreadNotifications={0}
+        />
+        <div className="pt-[60px]">
+          <div className="max-w-2xl mx-auto px-4 py-12 flex flex-col items-center text-center">
+            {/* Avatar */}
+            <div className="mb-4">
+              {creator.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={creator.avatarUrl}
+                  alt={creator.displayName}
+                  className="w-28 h-28 rounded-full object-cover border-4 border-[#2a2a30] shadow-2xl"
+                />
+              ) : (
+                <div
+                  className="w-28 h-28 rounded-full flex items-center justify-center text-4xl font-bold text-white border-4 border-[#2a2a30] shadow-2xl"
+                  style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+                >
+                  {fanInitials}
+                </div>
+              )}
+            </div>
+            {/* Name + username */}
+            <h1 className="text-2xl font-bold text-white mb-1">{creator.displayName}</h1>
+            <p className="text-[#8888a0] text-sm mb-3">@{creator.username}</p>
+            {/* Fan badge */}
+            <div
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+              style={{
+                background: 'linear-gradient(135deg, rgba(224,64,251,0.1), rgba(124,77,255,0.1))',
+                border: '1px solid rgba(224,64,251,0.25)',
+                color: '#e040fb',
+              }}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              </svg>
+              Fan account
+            </div>
+            {/* Bio */}
+            {creator.bio && (
+              <p className="text-[#b0b0c8] text-sm leading-relaxed max-w-sm">{creator.bio}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const supabase = await createClient()
   const {
