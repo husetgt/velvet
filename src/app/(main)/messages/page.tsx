@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 interface UserInfo {
   id: string
@@ -103,13 +104,15 @@ function LockedMessageBubble({ msg, isMine, onUnlock }: { msg: MessageItem; isMi
   )
 }
 
-export default function MessagesPage() {
+function MessagesPageInner() {
+  const searchParams = useSearchParams()
   const [currentUser, setCurrentUser] = useState<UserInfo | null>(null)
   const [allMessages, setAllMessages] = useState<MessageItem[]>([])
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [thread, setThread] = useState<MessageItem[]>([])
   const [messageInput, setMessageInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState('')
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [nickname, setNickname] = useState('')
@@ -121,6 +124,14 @@ export default function MessagesPage() {
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.user) setCurrentUser(d.user); setLoading(false) }).catch(() => setLoading(false))
   }, [])
+
+  // Open conversation from ?with= query param
+  useEffect(() => {
+    const withParam = searchParams.get('with')
+    if (withParam) {
+      setSelectedUserId(withParam)
+    }
+  }, [searchParams])
 
   useEffect(() => {
     if (!currentUser) return
@@ -164,6 +175,7 @@ export default function MessagesPage() {
     e.preventDefault()
     if (!messageInput.trim() || !selectedUserId || !currentUser) return
     setSending(true)
+    setSendError('')
     try {
       const res = await fetch('/api/messages', {
         method: 'POST',
@@ -171,7 +183,12 @@ export default function MessagesPage() {
         body: JSON.stringify({ receiverId: selectedUserId, content: messageInput.trim() }),
       })
       const data = await res.json()
-      if (res.ok && data.message) { setThread(prev => [...prev, data.message]); setMessageInput('') }
+      if (res.ok && data.message) {
+        setThread(prev => [...prev, data.message])
+        setMessageInput('')
+      } else if (res.status === 403) {
+        setSendError('Subscribe to this creator to send messages')
+      }
     } finally { setSending(false) }
   }
 
@@ -330,6 +347,13 @@ export default function MessagesPage() {
               <div ref={threadEndRef} />
             </div>
 
+            {/* Send error */}
+            {sendError && (
+              <div className="px-5 py-2 bg-red-500/10 border-t border-red-500/20 text-red-400 text-xs">
+                {sendError}
+              </div>
+            )}
+
             {/* Input bar */}
             <form onSubmit={handleSend} className="px-5 py-3.5 border-t border-[#2a2a30] flex items-center gap-2.5 shrink-0">
               {/* Emoji */}
@@ -454,5 +478,13 @@ export default function MessagesPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function MessagesPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 rounded-full border-2 border-[#e040fb] border-t-transparent animate-spin" /></div>}>
+      <MessagesPageInner />
+    </Suspense>
   )
 }

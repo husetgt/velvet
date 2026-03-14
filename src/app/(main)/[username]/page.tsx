@@ -194,7 +194,7 @@ export default async function UserProfilePage({ params }: Props) {
           {!isOwnProfile && currentUser && (
             <div className="flex items-center gap-2 pb-1">
               <Link
-                href="/messages"
+                href={`/messages?with=${profileUser.id}`}
                 className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-[#2a2a30] text-white hover:border-[#e040fb44] hover:bg-[#161618] transition-all"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

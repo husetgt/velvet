@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import NewPostModal from '@/components/NewPostModal'
 
 interface User {
@@ -349,6 +349,7 @@ function ContentTabContent({ stats }: { stats: Stats }) {
 
 export default function DashboardClient({ user }: { user: User }) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState<FilterTab>('earnings')
   const [period, setPeriod] = useState<Period>('all')
   const [periodOpen, setPeriodOpen] = useState(false)
@@ -379,6 +380,15 @@ export default function DashboardClient({ user }: { user: User }) {
   }, [])
 
   useEffect(() => { fetchStats() }, [fetchStats])
+
+  // Read ?tab param from URL and set active tab
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'content' || tab === 'posts') setActiveTab('content')
+    else if (tab === 'earnings') setActiveTab('earnings')
+    else if (tab === 'monthly') setActiveTab('monthly')
+    else if (tab === 'subscribers') setActiveTab('subscribers')
+  }, [searchParams])
 
   // Close period dropdown on outside click
   useEffect(() => {
@@ -414,7 +424,7 @@ export default function DashboardClient({ user }: { user: User }) {
   // Creator-specific sidebar nav
   const SIDEBAR_NAV = [
     { href: '/dashboard', label: 'Home', active: true, icon: <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>, icon2: <polyline points="9 22 9 12 15 12 15 22"/> },
-    { href: '/dashboard?tab=posts', label: 'Posts', icon: <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></> },
+    { href: '/dashboard?tab=content', label: 'Posts', icon: <><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></> },
     { href: '/messages', label: 'Messages', icon: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/> },
     { href: '/notifications', label: 'Notifications', icon: <><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></> },
     { href: '/wallet', label: 'Wallet', icon: <><path d="M20 12V22H4V12"/><path d="M22 7H2v5h20V7z"/><path d="M12 22V7"/></> },

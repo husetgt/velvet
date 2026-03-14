@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import DashboardClient from './DashboardClient'
+import { Suspense } from 'react'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -41,15 +42,17 @@ export default async function DashboardPage() {
   if (!user) redirect('/login')
 
   return (
-    <DashboardClient
-      user={{
-        id: user.id,
-        displayName: user.displayName,
-        username: user.username,
-        role: user.role,
-        avatarUrl: user.avatarUrl,
-        subscriberCount: user._count.subscribers,
-      }}
-    />
+    <Suspense fallback={<div className="flex items-center justify-center h-screen bg-[#0d0d0f]"><div className="w-8 h-8 rounded-full border-2 border-[#e040fb] border-t-transparent animate-spin" /></div>}>
+      <DashboardClient
+        user={{
+          id: user.id,
+          displayName: user.displayName,
+          username: user.username,
+          role: user.role,
+          avatarUrl: user.avatarUrl,
+          subscriberCount: user._count.subscribers,
+        }}
+      />
+    </Suspense>
   )
 }

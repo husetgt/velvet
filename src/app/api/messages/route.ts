@@ -74,6 +74,19 @@ export async function POST(req: NextRequest) {
     const receiver = await prisma.user.findUnique({ where: { id: receiverId } })
     if (!receiver) return NextResponse.json({ error: 'Receiver not found' }, { status: 404 })
 
+    // Subscription check: only subscribed fans can message creators
+    // Exception: "husetgt" test account bypasses this check
+    if (receiver.isCreator && user.username !== 'husetgt') {
+      const subscription = await prisma.subscription.findUnique({
+        where: {
+          subscriberId_creatorId: { subscriberId: user.id, creatorId: receiver.id },
+        },
+      })
+      if (!subscription || subscription.status !== 'ACTIVE') {
+        return NextResponse.json({ error: 'You must subscribe to message this creator' }, { status: 403 })
+      }
+    }
+
     // If price is set, this is a PPV message — only creators can send them
     const parsedPrice = price && Number(price) > 0 ? Number(price) : null
     if (parsedPrice && !user.isCreator) {
