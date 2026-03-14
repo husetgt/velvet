@@ -149,15 +149,16 @@ export default function DiscoverClient({ creators: initialCreators, currentUserI
       {activeTab === 'discover' && current && (
         <div
           ref={containerRef}
-          className="flex-1 relative overflow-hidden"
+          className="flex-1 relative overflow-hidden bg-black flex items-center justify-center"
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Background: video or cover image */}
+          {/* Centered 9:16 card — all overlays are inside this */}
           <div
-            className={`absolute inset-0 transition-opacity duration-350 ${transitioning ? 'opacity-0' : 'opacity-100'}`}
+            className={`relative h-full aspect-[9/16] max-w-full overflow-hidden transition-opacity duration-350 ${transitioning ? 'opacity-0' : 'opacity-100'}`}
             style={{ transition: 'opacity 0.35s ease' }}
           >
+            {/* Media */}
             {current.introVideoUrl ? (
               // eslint-disable-next-line jsx-a11y/media-has-caption
               <video
@@ -187,99 +188,77 @@ export default function DiscoverClient({ creators: initialCreators, currentUserI
             {/* Gradient overlays */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-black/10" />
             <div className="absolute inset-0 bg-gradient-to-r from-black/30 to-transparent" />
-          </div>
 
-          {/* Right side actions */}
-          <div className="absolute right-4 bottom-32 flex flex-col items-center gap-5 z-10">
-            {/* Subscribe */}
-            <button
-              onClick={() => handleSubscribe(current)}
-              className="flex flex-col items-center gap-1"
-            >
-              <div
-                className="w-12 h-12 rounded-full flex items-center justify-center"
-                style={current.isSubscribed
-                  ? { background: 'linear-gradient(135deg, rgba(224,64,251,0.3), rgba(124,77,255,0.3))', border: '2px solid #e040fb' }
-                  : { background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.4)' }
-                }
-              >
-                {current.isSubscribed ? (
-                  <svg className="w-5 h-5 text-[#e040fb]" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-                    <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
-                  </svg>
-                )}
-              </div>
-              <span className="text-white text-[10px] font-semibold">{current.isSubscribed ? 'Subscribed' : 'Subscribe'}</span>
-            </button>
-
-            {/* Message (only if subscribed) */}
-            {current.isSubscribed && (
-              <Link href={`/messages?with=${current.id}`} className="flex flex-col items-center gap-1">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.4)' }}>
-                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                  </svg>
+            {/* Right side actions */}
+            <div className="absolute right-3 bottom-28 flex flex-col items-center gap-5 z-20">
+              <button onClick={() => handleSubscribe(current)} className="flex flex-col items-center gap-1">
+                <div
+                  className="w-12 h-12 rounded-full flex items-center justify-center"
+                  style={current.isSubscribed
+                    ? { background: 'linear-gradient(135deg, rgba(224,64,251,0.3), rgba(124,77,255,0.3))', border: '2px solid #e040fb' }
+                    : { background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.4)' }
+                  }
+                >
+                  {current.isSubscribed ? (
+                    <svg className="w-5 h-5 text-[#e040fb]" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                  ) : (
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+                      <line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+                    </svg>
+                  )}
                 </div>
-                <span className="text-white text-[10px] font-semibold">Message</span>
-              </Link>
-            )}
-          </div>
-
-          {/* Bottom overlay: creator info */}
-          <div className="absolute bottom-0 left-0 right-14 p-5 z-10">
-            <Link href={`/${current.username}`} className="flex items-center gap-3 mb-3 group">
-              {current.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={current.avatarUrl} alt={current.displayName} className="w-12 h-12 rounded-full object-cover border-2 border-white/40 shrink-0" />
-              ) : (
-                <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold text-white border-2 border-white/40 shrink-0" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
-                  {getInitials(current.displayName)}
-                </div>
-              )}
-              <div>
-                <div className="text-white font-bold text-base group-hover:text-[#e040fb] transition-colors">{current.displayName}</div>
-                <div className="text-white/70 text-xs">@{current.username}</div>
-              </div>
-            </Link>
-
-            <div className="flex items-center gap-3 text-white/70 text-xs mb-2">
-              <span><span className="text-white font-bold">{current.subscriberCount.toLocaleString()}</span> fans</span>
-              <span><span className="text-white font-bold">{current.postCount}</span> posts</span>
-              {current.subscriptionPrice && (
-                <span className="text-[#e040fb] font-bold">${current.subscriptionPrice.toFixed(2)}/mo</span>
+                <span className="text-white text-[10px] font-semibold">{current.isSubscribed ? 'Subscribed' : 'Subscribe'}</span>
+              </button>
+              {current.isSubscribed && (
+                <Link href={`/messages?with=${current.id}`} className="flex flex-col items-center gap-1">
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.15)', border: '2px solid rgba(255,255,255,0.4)' }}>
+                    <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </svg>
+                  </div>
+                  <span className="text-white text-[10px] font-semibold">Message</span>
+                </Link>
               )}
             </div>
 
-            {current.bio && (
-              <p className="text-white/80 text-xs line-clamp-2 max-w-xs">{current.bio}</p>
-            )}
-          </div>
+            {/* Bottom overlay: creator info */}
+            <div className="absolute bottom-0 left-0 right-16 p-5 z-10">
+              <Link href={`/${current.username}`} className="flex items-center gap-3 mb-3 group">
+                {current.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={current.avatarUrl} alt={current.displayName} className="w-12 h-12 rounded-full object-cover border-2 border-white/40 shrink-0" />
+                ) : (
+                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold text-white border-2 border-white/40 shrink-0" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
+                    {getInitials(current.displayName)}
+                  </div>
+                )}
+                <div>
+                  <div className="text-white font-bold text-base group-hover:text-[#e040fb] transition-colors">{current.displayName}</div>
+                  <div className="text-white/70 text-xs">@{current.username}</div>
+                </div>
+              </Link>
+              <div className="flex items-center gap-3 text-white/70 text-xs mb-2">
+                <span><span className="text-white font-bold">{current.subscriberCount.toLocaleString()}</span> fans</span>
+                <span><span className="text-white font-bold">{current.postCount}</span> posts</span>
+                {current.subscriptionPrice && (
+                  <span className="text-[#e040fb] font-bold">${current.subscriptionPrice.toFixed(2)}/mo</span>
+                )}
+              </div>
+              {current.bio && (
+                <p className="text-white/80 text-xs line-clamp-2 max-w-xs">{current.bio}</p>
+              )}
+            </div>
 
-          {/* Navigation arrows */}
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-10">
-            <button
-              onClick={goPrev}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all hover:scale-110"
-              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="18 15 12 9 6 15"/>
-              </svg>
-            </button>
-            <button
-              onClick={goNext}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all hover:scale-110"
-              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}
-            >
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 12 15 18 9"/>
-              </svg>
-            </button>
+            {/* Navigation arrows */}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-20">
+              <button onClick={goPrev} className="w-9 h-9 rounded-full flex items-center justify-center text-white" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+              </button>
+              <button onClick={goNext} className="w-9 h-9 rounded-full flex items-center justify-center text-white" style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)' }}>
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+            </div>
           </div>
         </div>
       )}

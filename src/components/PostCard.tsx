@@ -78,12 +78,12 @@ function CreatorAvatar({ displayName, avatarUrl }: { displayName: string; avatar
 function ImageCarousel({ urls }: { urls: string[] }) {
   const [idx, setIdx] = useState(0)
   return (
-    <div className="relative w-full aspect-[4/5] max-h-96 bg-black overflow-hidden">
+    <div className="relative w-full aspect-[9/16] max-h-[600px] bg-black overflow-hidden flex items-center justify-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={urls[idx]}
         alt=""
-        className="w-full h-full object-cover"
+        className="max-w-full max-h-full object-contain"
       />
       {urls.length > 1 && (
         <>
@@ -315,7 +315,7 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
             // Locked: show gradient placeholder, never real image
             <LockedOverlay price={post.price} postId={post.id} onUnlock={onUnlock} />
           ) : isVideo ? (
-            <div className="relative w-full aspect-video max-h-96 bg-black flex items-center justify-center overflow-hidden">
+            <div className="relative w-full aspect-[9/16] max-h-[600px] bg-black flex items-center justify-center overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <video
                 src={post.mediaUrls[0]}
