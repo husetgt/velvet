@@ -109,6 +109,7 @@ function MessagesPageInner() {
   const [currentUser, setCurrentUser] = useState<UserInfo | null>(null)
   const [allMessages, setAllMessages] = useState<MessageItem[]>([])
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
+  const [syntheticUser, setSyntheticUser] = useState<{ id: string; username: string; displayName: string; avatarUrl?: string | null } | null>(null)
   const [thread, setThread] = useState<MessageItem[]>([])
   const [messageInput, setMessageInput] = useState('')
   const [sending, setSending] = useState(false)
@@ -125,11 +126,16 @@ function MessagesPageInner() {
     fetch('/api/auth/me').then(r => r.json()).then(d => { if (d.user) setCurrentUser(d.user); setLoading(false) }).catch(() => setLoading(false))
   }, [])
 
-  // Open conversation from ?with= query param
+  // Open conversation from ?with= query param; fetch user info if not in existing convos
   useEffect(() => {
     const withParam = searchParams.get('with')
     if (withParam) {
       setSelectedUserId(withParam)
+      // Fetch user info for synthetic convo entry
+      fetch(`/api/users/${withParam}`)
+        .then(r => r.json())
+        .then(d => { if (d.user) setSyntheticUser(d.user) })
+        .catch(() => {})
     }
   }, [searchParams])
 
@@ -145,7 +151,7 @@ function MessagesPageInner() {
       const otherId = msg.senderId === currentUser.id ? msg.receiverId : msg.senderId
       if (!seen.has(otherId)) seen.set(otherId, msg)
     }
-    return Array.from(seen.entries()).map(([otherId, msg]) => ({
+    const result = Array.from(seen.entries()).map(([otherId, msg]) => ({
       userId: otherId,
       displayName: msg.senderId === currentUser.id ? (msg.receiver?.displayName ?? 'Unknown') : msg.sender.displayName,
       username: msg.senderId === currentUser.id ? (msg.receiver?.username ?? '') : msg.sender.username,
@@ -154,6 +160,19 @@ function MessagesPageInner() {
       lastAt: msg.createdAt,
       unread: allMessages.filter(m => m.senderId === otherId && !m.isRead).length,
     }))
+    // Inject synthetic entry from ?with= param if not already in list
+    if (syntheticUser && !result.find(c => c.userId === syntheticUser.id)) {
+      result.unshift({
+        userId: syntheticUser.id,
+        displayName: syntheticUser.displayName,
+        username: syntheticUser.username,
+        avatarUrl: syntheticUser.avatarUrl,
+        lastMessage: '',
+        lastAt: new Date().toISOString(),
+        unread: 0,
+      })
+    }
+    return result
   })()
 
   const filteredConvos = search
@@ -202,10 +221,14 @@ function MessagesPageInner() {
     return <div className="flex-1 flex items-center justify-center"><div className="w-6 h-6 rounded-full border-2 border-[#e040fb] border-t-transparent animate-spin" /></div>
   }
 
+  // On mobile: show list when no convo selected, show thread when selected
+  const showListMobile = !selectedUserId
+  const showThreadMobile = !!selectedUserId
+
   return (
-    <div className="flex flex-1 overflow-hidden h-screen">
-      {/* Left panel — conversation list (380px) */}
-      <div className="w-[380px] border-r border-[#2a2a30] bg-[#0d0d0f] flex flex-col shrink-0 overflow-hidden">
+    <div className="flex flex-1 overflow-hidden h-[calc(100vh-56px)] lg:h-screen">
+      {/* Left panel — conversation list */}
+      <div className={`${showListMobile ? 'flex' : 'hidden'} md:flex w-full md:w-[320px] lg:w-[380px] border-r border-[#2a2a30] bg-[#0d0d0f] flex-col shrink-0 overflow-hidden`}>
         {/* Header */}
         <div className="px-5 py-4 border-b border-[#2a2a30] shrink-0">
           <h2 className="font-bold text-white text-lg mb-3">Chats</h2>
@@ -265,14 +288,23 @@ function MessagesPageInner() {
       </div>
 
       {/* Center panel — thread */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-[#0d0d0f] min-w-0">
+      <div className={`${showThreadMobile ? 'flex' : 'hidden'} md:flex flex-1 flex-col overflow-hidden bg-[#0d0d0f] min-w-0`}>
         {selectedConvo ? (
           <>
             {/* Thread header */}
-            <div className="px-5 py-3.5 border-b border-[#2a2a30] flex items-center gap-3 shrink-0">
+            <div className="px-3 sm:px-5 py-3 sm:py-3.5 border-b border-[#2a2a30] flex items-center gap-2 sm:gap-3 shrink-0">
+              {/* Back button — mobile only */}
+              <button
+                onClick={() => setSelectedUserId(null)}
+                className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-[#8888a0] hover:text-white -ml-1 shrink-0"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="15 18 9 12 15 6"/>
+                </svg>
+              </button>
               <AvatarCircle name={selectedConvo.displayName} avatarUrl={selectedConvo.avatarUrl} online />
-              <div className="flex-1">
-                <div className="font-semibold text-white text-sm">{selectedConvo.displayName}</div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-white text-sm truncate">{selectedConvo.displayName}</div>
                 <div className="text-xs text-[#8888a0]">@{selectedConvo.username} · <span className="text-green-400">Online</span></div>
               </div>
               {/* Tabs */}
@@ -400,9 +432,9 @@ function MessagesPageInner() {
         )}
       </div>
 
-      {/* Right panel — spending behavior (300px) */}
+      {/* Right panel — spending behavior (hidden on mobile/tablet, visible xl+) */}
       {selectedConvo && (
-        <div className="w-[300px] border-l border-[#2a2a30] bg-[#111113] overflow-auto shrink-0">
+        <div className="hidden xl:block w-[280px] border-l border-[#2a2a30] bg-[#111113] overflow-auto shrink-0">
           <div className="p-5 space-y-5">
             {/* User info */}
             <div className="flex flex-col items-center text-center pt-2">

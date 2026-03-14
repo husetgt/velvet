@@ -107,13 +107,13 @@ export default function NewPostModal({ onClose, onPosted }: NewPostModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
       style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="w-full max-w-2xl rounded-2xl overflow-hidden flex flex-col"
-        style={{ background: '#161618', maxHeight: '90vh' }}
+        className="w-full sm:max-w-2xl rounded-none sm:rounded-2xl overflow-hidden flex flex-col"
+        style={{ background: '#161618', maxHeight: '100dvh', height: '100dvh' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2a2a30] shrink-0">

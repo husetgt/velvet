@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import NewPostModal from '@/components/NewPostModal'
+import dynamic from 'next/dynamic'
+const NewPostModal = dynamic(() => import('@/components/NewPostModal'), { ssr: false })
 
 interface User {
   id: string
@@ -160,7 +161,7 @@ function UserAvatar({ name, avatarUrl, size = 8 }: { name: string; avatarUrl?: s
 function EarningsTabContent({ stats }: { stats: Stats }) {
   return (
     <>
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
         <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
           <div className="flex items-start justify-between">
             <div>
@@ -228,7 +229,7 @@ function MonthlyTabContent({ stats }: { stats: Stats }) {
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-6">
         <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
           <div className="flex items-start justify-between">
             <div>
@@ -267,7 +268,7 @@ function MonthlyTabContent({ stats }: { stats: Stats }) {
 function SubscribersTabContent({ stats }: { stats: Stats }) {
   return (
     <>
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
         <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] p-5">
           <p className="text-[#8888a0] text-xs font-semibold uppercase tracking-wider mb-1">Active Subs</p>
           <p className="text-3xl font-black text-white">{stats.activeSubs}</p>
@@ -442,9 +443,9 @@ export default function DashboardClient({ user }: { user: User }) {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — hidden on mobile */}
       <aside
-        className="relative flex flex-col h-full shrink-0 transition-all duration-200 border-r border-[#1e1e21]"
+        className="relative hidden lg:flex flex-col h-full shrink-0 transition-all duration-200 border-r border-[#1e1e21]"
         style={{ width: sidebarCollapsed ? '64px' : '240px', background: '#111113' }}
       >
         <button
@@ -552,10 +553,10 @@ export default function DashboardClient({ user }: { user: User }) {
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 overflow-auto">
-          <div className="p-6 max-w-4xl">
+          <div className="p-3 sm:p-6 max-w-4xl pt-16 lg:pt-6">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <h1 className="text-2xl font-black text-white">Dashboard</h1>
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h1 className="text-xl sm:text-2xl font-black text-white">Dashboard</h1>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowNewPost(true)}
@@ -584,13 +585,13 @@ export default function DashboardClient({ user }: { user: User }) {
             </div>
 
             {/* Filter tabs + period dropdown */}
-            <div className="flex items-center justify-between mb-6 border-b border-[#2a2a30] pb-4">
-              <div className="flex items-center gap-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 border-b border-[#2a2a30] pb-4 gap-3 sm:gap-0">
+              <div className="flex items-center gap-1 overflow-x-auto scrollbar-none pb-1 sm:pb-0">
                 {FILTER_TABS.map(tab => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                    className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all shrink-0 min-h-[36px] ${
                       activeTab === tab.id ? 'text-white' : 'text-[#8888a0] hover:text-white'
                     }`}
                     style={activeTab === tab.id ? { background: 'linear-gradient(135deg, #e040fb, #7c4dff)' } : {}}
@@ -713,3 +714,4 @@ export default function DashboardClient({ user }: { user: User }) {
     </div>
   )
 }
+

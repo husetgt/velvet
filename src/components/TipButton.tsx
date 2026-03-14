@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
+import PaymentMethodModal from './PaymentMethodModal'
 
 const StripeModal = dynamic(() => import('./StripeModal'), { ssr: false })
+
+const PRESETS = [3, 5, 10, 25, 50]
 
 interface TipButtonProps {
   creatorId: string
@@ -11,60 +14,82 @@ interface TipButtonProps {
 }
 
 export default function TipButton({ creatorId, creatorName }: TipButtonProps) {
-  const [showAmountPicker, setShowAmountPicker] = useState(false)
-  const [amount, setAmount] = useState('5')
+  const [showPicker, setShowPicker] = useState(false)
+  const [selectedPreset, setSelectedPreset] = useState<number | null>(5)
+  const [customAmount, setCustomAmount] = useState('')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
-  const [clientSecret, setClientSecret] = useState<string | null>(null)
-  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const handleInitiateTip = async () => {
-    const amountNum = parseFloat(amount)
-    if (!amountNum || amountNum <= 0) {
-      setError('Please enter a valid tip amount')
-      return
-    }
+  // Payment method modal
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+
+  // Stripe
+  const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null)
+
+  const amount = customAmount !== '' ? parseFloat(customAmount) : (selectedPreset ?? 0)
+
+  const handleContinue = () => {
+    if (!amount || amount <= 0) { setError('Please select or enter a tip amount'); return }
+    setError(null)
+    setShowPaymentModal(true)
+  }
+
+  const handleWalletPay = async () => {
+    setShowPaymentModal(false)
     setLoading(true)
     setError(null)
     try {
       const res = await fetch('/api/payments/tip', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ creatorId, amount: amountNum, message: message || undefined }),
+        body: JSON.stringify({ creatorId, amount, message: message || undefined, paymentMethod: 'wallet' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Wallet payment failed')
+      setShowPicker(false)
+      setMessage('')
+      setCustomAmount('')
+      setSelectedPreset(5)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Payment failed')
+    } finally { setLoading(false) }
+  }
+
+  const handleCardPay = async () => {
+    setShowPaymentModal(false)
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/payments/tip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ creatorId, amount, message: message || undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to initiate tip')
       setClientSecret(data.clientSecret)
       setPaymentIntentId(data.clientSecret.split('_secret_')[0])
-      setShowAmountPicker(false)
-    } catch (err: any) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+      setShowPicker(false)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to initiate tip')
+    } finally { setLoading(false) }
   }
 
-  const handleSuccess = async () => {
-    const amountNum = parseFloat(amount)
+  const handleStripeSuccess = async () => {
     if (paymentIntentId) {
       try {
         await fetch('/api/payments/confirm-tip', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            creatorId,
-            amount: amountNum,
-            message: message || undefined,
-            paymentIntentId,
-          }),
+          body: JSON.stringify({ creatorId, amount, message: message || undefined, paymentIntentId }),
         })
-      } catch (e) {
-        console.error('confirm-tip failed', e)
-      }
+      } catch (e) { console.error('confirm-tip failed', e) }
     }
     setClientSecret(null)
-    setAmount('5')
+    setCustomAmount('')
+    setSelectedPreset(5)
     setMessage('')
   }
 
@@ -72,61 +97,95 @@ export default function TipButton({ creatorId, creatorName }: TipButtonProps) {
 
   return (
     <>
-      {!showAmountPicker ? (
+      {!showPicker ? (
         <button
-          onClick={() => setShowAmountPicker(true)}
+          onClick={() => setShowPicker(true)}
           className="px-4 py-2 rounded-xl text-sm font-medium border border-[#2a2a30] text-[#8888a0] hover:text-white hover:border-[#3a3a40] transition-all"
         >
           💰 Send Tip
         </button>
       ) : (
-        <div className="flex flex-col gap-2 p-4 rounded-xl border border-[#2a2a30] bg-[#161618]">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-[#8888a0]">$</span>
+        <div className="flex flex-col gap-3 p-4 rounded-xl border border-[#2a2a30] bg-[#161618] min-w-[260px]">
+          <p className="text-white text-sm font-semibold">Tip {creatorName}</p>
+
+          {/* Preset amounts */}
+          <div className="flex flex-wrap gap-2">
+            {PRESETS.map(preset => (
+              <button
+                key={preset}
+                onClick={() => { setSelectedPreset(preset); setCustomAmount('') }}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
+                style={
+                  selectedPreset === preset && customAmount === ''
+                    ? { background: 'linear-gradient(135deg, #e040fb, #7c4dff)', color: '#fff' }
+                    : { background: '#1e1e21', border: '1px solid #2a2a30', color: '#8888a0' }
+                }
+              >
+                ${preset}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom amount */}
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#8888a0] text-sm">$</span>
             <input
               type="number"
               min="1"
               step="0.01"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="5.00"
-              className="w-24 px-3 py-1.5 rounded-lg bg-[#1e1e21] border border-[#2a2a30] text-white text-sm focus:outline-none focus:border-[#e040fb] transition-all"
+              value={customAmount}
+              onChange={e => { setCustomAmount(e.target.value); setSelectedPreset(null) }}
+              placeholder="Custom amount"
+              className="w-full pl-7 pr-3 py-2 rounded-lg bg-[#1e1e21] border border-[#2a2a30] text-white text-sm placeholder-[#555568] focus:outline-none focus:border-[#e040fb] transition-all"
             />
           </div>
+
+          {/* Optional message */}
           <input
             type="text"
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Optional message..."
-            className="w-full px-3 py-1.5 rounded-lg bg-[#1e1e21] border border-[#2a2a30] text-white text-sm placeholder-[#555568] focus:outline-none focus:border-[#e040fb] transition-all"
+            onChange={e => setMessage(e.target.value)}
+            placeholder="Optional message…"
+            className="w-full px-3 py-2 rounded-lg bg-[#1e1e21] border border-[#2a2a30] text-white text-sm placeholder-[#555568] focus:outline-none focus:border-[#e040fb] transition-all"
           />
+
           {error && <p className="text-red-400 text-xs">{error}</p>}
+
           <div className="flex gap-2">
             <button
-              onClick={() => { setShowAmountPicker(false); setError(null) }}
-              className="flex-1 py-1.5 rounded-lg text-xs text-[#8888a0] border border-[#2a2a30] hover:text-white transition-all"
+              onClick={() => { setShowPicker(false); setError(null) }}
+              className="flex-1 py-2 rounded-lg text-xs text-[#8888a0] border border-[#2a2a30] hover:text-white transition-all"
             >
               Cancel
             </button>
             <button
-              onClick={handleInitiateTip}
-              disabled={loading}
-              className="flex-1 py-1.5 rounded-lg text-xs font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              onClick={handleContinue}
+              disabled={loading || !amount || amount <= 0}
+              className="flex-1 py-2 rounded-lg text-xs font-semibold text-white hover:opacity-90 transition-opacity disabled:opacity-50"
               style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
             >
-              {loading ? '...' : 'Continue'}
+              {loading ? '…' : `Send $${amount > 0 ? amount.toFixed(2) : '0.00'}`}
             </button>
           </div>
         </div>
       )}
 
+      <PaymentMethodModal
+        isOpen={showPaymentModal}
+        onClose={() => setShowPaymentModal(false)}
+        price={amount}
+        title={`Tip ${creatorName}`}
+        onSelectWallet={handleWalletPay}
+        onSelectCard={handleCardPay}
+      />
+
       {clientSecret && (
         <StripeModal
           isOpen={true}
           onClose={() => setClientSecret(null)}
-          onSuccess={handleSuccess}
+          onSuccess={handleStripeSuccess}
           title={`Tip ${creatorName}`}
-          description={`$${parseFloat(amount).toFixed(2)} tip`}
+          description={`$${amount.toFixed(2)} tip`}
           clientSecret={clientSecret}
           stripePublishableKey={stripeKey}
         />

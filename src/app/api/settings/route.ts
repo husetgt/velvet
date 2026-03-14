@@ -19,7 +19,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { displayName, bio, avatarUrl, subscriptionPrice } = body
+    const { displayName, bio, avatarUrl, coverUrl, subscriptionPrice } = body
 
     if (displayName !== undefined && typeof displayName !== 'string') {
       return NextResponse.json({ error: 'Invalid displayName' }, { status: 400 })
@@ -34,6 +34,7 @@ export async function PATCH(req: NextRequest) {
     if (displayName !== undefined) updateData.displayName = displayName.trim()
     if (bio !== undefined) updateData.bio = bio ? bio.trim() : null
     if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl || null
+    if (coverUrl !== undefined) updateData.coverUrl = coverUrl || null
 
     if (subscriptionPrice !== undefined && current.isCreator) {
       const price = parseFloat(subscriptionPrice)

@@ -1,17 +1,8 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
-import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
 
 export default async function ProfilePage() {
-  const supabase = await createClient()
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser()
-
-  if (!authUser?.email) redirect('/login')
-
-  const user = await prisma.user.findUnique({ where: { email: authUser.email } })
+  const user = await getCurrentUser()
   if (!user) redirect('/login')
-
   redirect(`/${user.username}`)
 }

@@ -16,7 +16,8 @@ async function getOrCreateStripeCustomer(userId: string, email: string): Promise
 
 export async function POST(req: NextRequest) {
   try {
-    const { creatorId, amount, message } = await req.json()
+    const body = await req.json()
+    const { creatorId, amount, message, paymentMethod } = body as { creatorId?: string; amount?: number; message?: string; paymentMethod?: string }
     if (!creatorId || !amount || amount <= 0) {
       return NextResponse.json({ error: 'creatorId and a positive amount are required' }, { status: 400 })
     }
@@ -33,7 +34,19 @@ export async function POST(req: NextRequest) {
 
     const amountCents = Math.round(Number(amount) * 100)
 
-    // Try wallet first
+    // Force wallet payment if explicitly requested
+    if (paymentMethod === 'wallet') {
+      if (tipper.walletBalance < amountCents) {
+        return NextResponse.json({ error: 'Insufficient wallet balance' }, { status: 402 })
+      }
+      await prisma.$transaction([
+        prisma.user.update({ where: { id: tipper.id }, data: { walletBalance: { decrement: amountCents } } }),
+        prisma.tip.create({ data: { tipperId: tipper.id, creatorId, amount: Number(amount), message: message ?? null } }),
+      ])
+      return NextResponse.json({ success: true, method: 'wallet' })
+    }
+
+    // Auto wallet if sufficient
     if (tipper.walletBalance >= amountCents) {
       await prisma.$transaction([
         prisma.user.update({

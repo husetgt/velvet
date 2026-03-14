@@ -126,12 +126,12 @@ export default function StripeModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
       style={{ background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)' }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-[#2a2a30] p-6 shadow-2xl"
+        className="w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl border border-[#2a2a30] p-5 sm:p-6 shadow-2xl"
         style={{ background: '#161618' }}
       >
         {/* Header */}

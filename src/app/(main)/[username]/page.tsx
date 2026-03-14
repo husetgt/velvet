@@ -1,11 +1,12 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth'
 import SubscribeButton from '@/components/SubscribeButton'
 import TipButton from '@/components/TipButton'
 import EditProfileInline from '@/components/EditProfileInline'
 import ProfileTabs from '@/components/ProfileTabs'
+import CoverUpload from '@/components/CoverUpload'
 
 export const dynamic = 'force-dynamic'
 
@@ -16,15 +17,8 @@ interface Props {
 export default async function UserProfilePage({ params }: Props) {
   const { username } = await params
 
-  const supabase = await createClient()
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser()
-
-  let currentUser = null
-  if (authUser?.email) {
-    currentUser = await prisma.user.findUnique({ where: { email: authUser.email } })
-  }
+  // getCurrentUser is cached — no extra round-trip vs layout
+  const currentUser = await getCurrentUser()
 
   const profileUser = await prisma.user.findUnique({
     where: { username },
@@ -139,7 +133,7 @@ export default async function UserProfilePage({ params }: Props) {
     <div className="min-h-screen bg-[#0d0d0f] text-white">
       {/* Banner */}
       <div
-        className="relative w-full h-48"
+        className="relative w-full h-32 sm:h-48"
         style={
           profileUser.coverUrl
             ? { background: `url(${profileUser.coverUrl}) center/cover no-repeat` }
@@ -155,10 +149,10 @@ export default async function UserProfilePage({ params }: Props) {
           }}
         />
         {currentUser && (
-          <div className="absolute top-4 left-4">
+          <div className="absolute top-3 sm:top-4 left-3 sm:left-4">
             <Link
               href="/explore"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white/80 bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium text-white/80 bg-black/30 hover:bg-black/50 backdrop-blur-sm transition-colors min-h-[36px]"
             >
               <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="15 18 9 12 15 6" />
@@ -167,22 +161,23 @@ export default async function UserProfilePage({ params }: Props) {
             </Link>
           </div>
         )}
+        {isOwnProfile && <CoverUpload />}
       </div>
 
-      <div className="max-w-2xl mx-auto px-4">
+      <div className="max-w-2xl mx-auto px-3 sm:px-4">
         {/* Avatar overlapping banner */}
-        <div className="relative -mt-12 mb-4 flex items-end justify-between">
+        <div className="relative -mt-10 sm:-mt-12 mb-4 flex items-end justify-between">
           <div className="shrink-0">
             {profileUser.avatarUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={profileUser.avatarUrl}
                 alt={profileUser.displayName}
-                className="w-24 h-24 rounded-full object-cover border-4 border-[#0d0d0f] shadow-2xl"
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-4 border-[#0d0d0f] shadow-2xl"
               />
             ) : (
               <div
-                className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-bold text-white border-4 border-[#0d0d0f] shadow-2xl"
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full flex items-center justify-center text-2xl sm:text-3xl font-bold text-white border-4 border-[#0d0d0f] shadow-2xl"
                 style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
               >
                 {profileUser.displayName.charAt(0).toUpperCase()}
@@ -192,17 +187,41 @@ export default async function UserProfilePage({ params }: Props) {
 
           {/* Action buttons */}
           {!isOwnProfile && currentUser && (
-            <div className="flex items-center gap-2 pb-1">
-              <Link
-                href={`/messages?with=${profileUser.id}`}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border border-[#2a2a30] text-white hover:border-[#e040fb44] hover:bg-[#161618] transition-all"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
-                Message
-              </Link>
-              <TipButton creatorId={profileUser.id} creatorName={profileUser.displayName} />
+            <div className="flex flex-wrap items-center gap-2 pb-1">
+              {isSubscribed ? (
+                <Link
+                  href={`/messages?with=${profileUser.id}`}
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-[#2a2a30] text-white hover:border-[#e040fb44] hover:bg-[#161618] transition-all min-h-[40px]"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  <span className="hidden xs:inline">Message</span>
+                </Link>
+              ) : (
+                <a
+                  href="#subscribe-section"
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-[#2a2a30] text-[#555568] bg-[#111113] cursor-pointer select-none min-h-[40px]"
+                  title="Subscribe to send messages"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                  </svg>
+                  <span className="hidden sm:inline">Subscribe to Message</span>
+                </a>
+              )}
+              {isSubscribed ? (
+                <TipButton creatorId={profileUser.id} creatorName={profileUser.displayName} />
+              ) : (
+                <a
+                  href="#subscribe-section"
+                  className="px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold border border-[#2a2a30] text-[#555568] bg-[#111113] cursor-pointer select-none min-h-[40px] flex items-center"
+                  title="Subscribe to send tips"
+                >
+                  <span className="hidden sm:inline">Subscribe to Tip</span>
+                  <span className="sm:hidden">💰</span>
+                </a>
+              )}
             </div>
           )}
         </div>
@@ -257,7 +276,7 @@ export default async function UserProfilePage({ params }: Props) {
 
         {/* Subscribe button */}
         {!isSubscribed && !isOwnProfile && currentUser && (
-          <div className="mb-5">
+          <div id="subscribe-section" className="mb-5">
             <SubscribeButton
               creatorId={profileUser.id}
               creatorName={profileUser.displayName}

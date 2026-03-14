@@ -1,17 +1,13 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
+import { getCurrentUser } from '@/lib/auth'
 import UnsubscribeButton from './UnsubscribeButton'
 
 export const dynamic = 'force-dynamic'
 
 export default async function FollowingPage() {
-  const supabase = await createClient()
-  const { data: { user: authUser } } = await supabase.auth.getUser()
-  if (!authUser?.email) redirect('/login')
-
-  const user = await prisma.user.findUnique({ where: { email: authUser.email } })
+  const user = await getCurrentUser()
   if (!user) redirect('/login')
 
   const subscriptions = await prisma.subscription.findMany({
