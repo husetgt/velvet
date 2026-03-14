@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import AppNavbar from '@/components/AppNavbar'
+import AppSidebar from '@/components/AppSidebar'
 
 interface UserInfo {
   id: string
@@ -93,15 +93,18 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d0d0f] text-white flex items-center justify-center">
-        <div className="text-[#8888a0] text-sm">Loading…</div>
+      <div className="flex min-h-screen bg-[#0d0d0f]">
+        <div className="w-60 shrink-0 bg-[#111113]" />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-[#8888a0] text-sm">Loading…</div>
+        </main>
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#0d0d0f] text-white flex items-center justify-center">
+      <div className="flex min-h-screen bg-[#0d0d0f] text-white items-center justify-center">
         <div className="text-[#8888a0] text-sm">Please sign in to access settings.</div>
       </div>
     )
@@ -110,14 +113,13 @@ export default function SettingsPage() {
   const inputCls = 'w-full rounded-xl bg-[#1e1e21] border border-[#2a2a30] text-white placeholder-[#8888a0] focus:outline-none focus:border-[#e040fb] focus:ring-1 focus:ring-[#e040fb22] transition-all px-4 py-2.5 text-sm'
 
   return (
-    <div className="min-h-screen bg-[#0d0d0f] text-white">
-      <AppNavbar
+    <div className="flex min-h-screen bg-[#0d0d0f] text-white">
+      <AppSidebar
         user={{ displayName: user.displayName, username: user.username, role: user.role, avatarUrl: user.avatarUrl }}
-        unreadMessages={0}
-        unreadNotifications={0}
+        activePath="/settings"
       />
 
-      <main className="pt-16">
+      <main className="flex-1 overflow-auto">
         <div className="max-w-xl mx-auto px-4 py-10">
           <h1 className="text-2xl font-bold mb-8">Settings</h1>
 

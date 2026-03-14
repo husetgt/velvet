@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import AppNavbar from '@/components/AppNavbar'
+import AppSidebar from '@/components/AppSidebar'
 
 interface UserInfo {
   id: string
@@ -207,15 +207,18 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0d0d0f] text-white flex items-center justify-center">
-        <div className="text-[#8888a0] text-sm">Loading…</div>
+      <div className="flex min-h-screen bg-[#0d0d0f]">
+        <div className="w-60 shrink-0 bg-[#111113]" />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-[#8888a0] text-sm">Loading…</div>
+        </main>
       </div>
     )
   }
 
   if (!currentUser) {
     return (
-      <div className="min-h-screen bg-[#0d0d0f] text-white flex items-center justify-center">
+      <div className="flex min-h-screen bg-[#0d0d0f] text-white items-center justify-center">
         <div className="text-center">
           <p className="text-[#8888a0] mb-4 text-sm">Please sign in to view messages</p>
           <Link href="/login" className="px-6 py-2.5 rounded-xl font-semibold text-white hover:opacity-90 transition-opacity text-sm" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
@@ -227,16 +230,15 @@ export default function MessagesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0d0d0f] text-white flex flex-col">
-      <AppNavbar
+    <div className="flex min-h-screen bg-[#0d0d0f] text-white">
+      <AppSidebar
         user={{ displayName: currentUser.displayName, username: currentUser.username, role: currentUser.role, avatarUrl: currentUser.avatarUrl }}
-        unreadMessages={0}
-        unreadNotifications={0}
+        activePath="/messages"
       />
 
-      {/* Full height container below navbar */}
-      <div className="flex flex-1 pt-[60px] overflow-hidden" style={{ height: 'calc(100vh - 0px)' }}>
-        {/* Conversation list — fixed w-80 */}
+      {/* Full height container */}
+      <div className="flex flex-1 overflow-hidden h-screen">
+        {/* Conversation list */}
         <div className="w-80 border-r border-[#2a2a30] bg-[#0d0d0f] flex flex-col shrink-0 overflow-hidden">
           <div className="px-5 py-4 border-b border-[#2a2a30]">
             <h2 className="font-bold text-white text-base">Messages</h2>
@@ -327,7 +329,6 @@ export default function MessagesPage() {
 
               {/* Send form */}
               <form onSubmit={handleSend} className="px-6 py-4 border-t border-[#2a2a30] flex items-center gap-3 shrink-0">
-                {/* Attachment icon */}
                 <button type="button" className="w-9 h-9 rounded-xl flex items-center justify-center text-[#8888a0] hover:text-white hover:bg-[#1e1e21] transition-colors shrink-0">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5">
                     <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />

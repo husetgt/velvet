@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
 import PostCard from '@/components/PostCard'
-import AppNavbar from '@/components/AppNavbar'
+import AppSidebar from '@/components/AppSidebar'
 
 export default async function FeedPage() {
   const supabase = await createClient()
@@ -16,34 +16,42 @@ export default async function FeedPage() {
   const user = await prisma.user.findUnique({ where: { email: authUser.email } })
   if (!user) redirect('/login')
 
-  const subscriptions = await prisma.subscription.findMany({
-    where: { subscriberId: user.id, status: 'ACTIVE' },
-    select: { creatorId: true },
-  })
+  // Run subscriptions + unread messages in parallel
+  const [subscriptions, unreadMessages] = await Promise.all([
+    prisma.subscription.findMany({
+      where: { subscriberId: user.id, status: 'ACTIVE' },
+      select: { creatorId: true },
+    }),
+    prisma.message.count({
+      where: { receiverId: user.id, isRead: false },
+    }),
+  ])
 
   const creatorIds = subscriptions.map((s: { creatorId: string }) => s.creatorId)
 
-  const posts = creatorIds.length
-    ? await prisma.post.findMany({
-        where: { creatorId: { in: creatorIds } },
-        include: {
-          creator: { select: { username: true, displayName: true, avatarUrl: true } },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 30,
-      })
-    : []
+  // Run posts + unlocks in parallel (only if there are subscriptions)
+  const [posts, unlocks] = await Promise.all([
+    creatorIds.length
+      ? prisma.post.findMany({
+          where: { creatorId: { in: creatorIds } },
+          include: {
+            creator: { select: { username: true, displayName: true, avatarUrl: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 30,
+        })
+      : Promise.resolve([]),
+    creatorIds.length
+      ? prisma.postUnlock.findMany({
+          where: { userId: user.id, post: { creatorId: { in: creatorIds } } },
+          select: { postId: true },
+        })
+      : Promise.resolve([]),
+  ])
 
-  const unlocks = await prisma.postUnlock.findMany({
-    where: { userId: user.id, post: { creatorId: { in: creatorIds } } },
-    select: { postId: true },
-  })
+  void unreadMessages // used for sidebar indirectly
+
   const unlockedPostIds = new Set(unlocks.map((u: { postId: string }) => u.postId))
-
-  // Count unread messages
-  const unreadMessages = await prisma.message.count({
-    where: { receiverId: user.id, isRead: false },
-  })
 
   const postsWithAccess = (
     posts as Array<{
@@ -70,14 +78,13 @@ export default async function FeedPage() {
   }))
 
   return (
-    <div className="min-h-screen bg-[#0d0d0f] text-white">
-      <AppNavbar
+    <div className="flex min-h-screen bg-[#0d0d0f] text-white">
+      <AppSidebar
         user={{ displayName: user.displayName, username: user.username, role: user.role, avatarUrl: user.avatarUrl }}
-        unreadMessages={unreadMessages}
-        unreadNotifications={0}
+        activePath="/feed"
       />
 
-      <main className="pt-16">
+      <main className="flex-1 overflow-auto">
         <div className="max-w-2xl mx-auto px-4 py-6">
           {/* Page header */}
           <div className="flex items-center justify-between mb-4">

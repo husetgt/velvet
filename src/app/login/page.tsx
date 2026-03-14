@@ -26,16 +26,8 @@ function LoginForm() {
       })
       if (error) throw error
 
-      // Fetch user role to redirect appropriately
-      const meRes = await fetch('/api/auth/me')
-      const meData = await meRes.json()
-      const role = meData?.user?.role
-
-      if (role === 'CREATOR' || role === 'ADMIN') {
-        router.push('/dashboard')
-      } else {
-        router.push('/feed')
-      }
+      // Go straight to /feed for fast redirect — feed page handles creator redirect if needed
+      router.push('/feed')
       router.refresh()
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed')

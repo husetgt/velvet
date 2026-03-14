@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { prisma } from '@/lib/prisma'
-import AppNavbar from '@/components/AppNavbar'
+import AppSidebar from '@/components/AppSidebar'
 
 export default async function ExplorePage() {
   const supabase = await createClient()
@@ -23,19 +23,14 @@ export default async function ExplorePage() {
     orderBy: { createdAt: 'desc' },
   })
 
-  const unreadMessages = await prisma.message.count({
-    where: { receiverId: user.id, isRead: false },
-  })
-
   return (
-    <div className="min-h-screen bg-[#0d0d0f] text-white">
-      <AppNavbar
+    <div className="flex min-h-screen bg-[#0d0d0f] text-white">
+      <AppSidebar
         user={{ displayName: user.displayName, username: user.username, role: user.role, avatarUrl: user.avatarUrl }}
-        unreadMessages={unreadMessages}
-        unreadNotifications={0}
+        activePath="/explore"
       />
 
-      <main className="pt-16">
+      <main className="flex-1 overflow-auto">
         <div className="max-w-5xl mx-auto px-4 py-8">
           {/* Search bar */}
           <div className="mb-8">
