@@ -76,7 +76,7 @@ export default function NewPostModal({ onClose, onPosted }: NewPostModalProps) {
         title,
         content: caption.trim(),
         mediaUrls,
-        isLocked: ppvEnabled,
+        isLocked: ppvEnabled || audience === 'subscribers' || audience === 'followers',
         price: ppvEnabled ? parseFloat(ppvPrice) : null,
         audience,
       }
