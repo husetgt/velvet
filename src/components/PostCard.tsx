@@ -75,22 +75,81 @@ function CreatorAvatar({ displayName, avatarUrl }: { displayName: string; avatar
   )
 }
 
-function ImageCarousel({ urls }: { urls: string[] }) {
+/**
+ * Image carousel — Fanvue style:
+ * - aspect-[4/5] max-h-[500px], object-cover
+ * - "Subscribers only" badge top-left if locked
+ * - blur-xl on the actual image for locked posts (not a placeholder)
+ * - "1/N" indicator bottom-center
+ */
+function ImageCarousel({
+  urls,
+  isBlurred,
+  isLocked,
+  price,
+  postId,
+  onUnlock,
+}: {
+  urls: string[]
+  isBlurred: boolean
+  isLocked: boolean
+  price?: number | null
+  postId: string
+  onUnlock?: (id: string) => void
+}) {
   const [idx, setIdx] = useState(0)
+
   return (
-    <div className="relative w-full aspect-[9/16] max-h-[600px] bg-black overflow-hidden flex items-center justify-center">
+    <div className="relative w-full aspect-[4/5] max-h-[500px] bg-black overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={urls[idx]}
         alt=""
-        className="max-w-full max-h-full object-contain"
+        className={`w-full h-full object-cover transition-all ${isBlurred ? 'blur-xl scale-105' : ''}`}
       />
+
+      {/* Subscribers-only badge — top-left */}
+      {isLocked && (
+        <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/70 text-white text-xs px-2.5 py-1 rounded-full backdrop-blur-sm">
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C9.24 2 7 4.24 7 7v1H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-2V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v1H9V7c0-1.66 1.34-3 3-3zm0 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
+          </svg>
+          {price ? `$${Number(price).toFixed(2)}` : 'Subscribers only'}
+        </div>
+      )}
+
+      {/* Unlock button overlay for locked posts with price */}
+      {isBlurred && price && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-4 flex flex-col items-center gap-3">
+            <p className="text-white font-bold text-lg">${Number(price).toFixed(2)}</p>
+            <p className="text-white/60 text-xs">One-time unlock</p>
+            <UnlockButton postId={postId} price={price} onUnlock={onUnlock} />
+          </div>
+        </div>
+      )}
+
+      {/* Unlock message for locked posts without price (subscribers only) */}
+      {isBlurred && !price && (
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="bg-black/50 backdrop-blur-sm rounded-2xl px-6 py-4 flex flex-col items-center gap-2 text-center">
+            <svg className="w-8 h-8 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+            <p className="text-white font-semibold text-sm">Subscribers only</p>
+            <p className="text-white/50 text-xs">Subscribe to unlock this content</p>
+          </div>
+        </div>
+      )}
+
+      {/* Carousel controls */}
       {urls.length > 1 && (
         <>
           {idx > 0 && (
             <button
               onClick={() => setIdx((i) => i - 1)}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors z-10"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                 <polyline points="15 18 9 12 15 6" />
@@ -100,72 +159,21 @@ function ImageCarousel({ urls }: { urls: string[] }) {
           {idx < urls.length - 1 && (
             <button
               onClick={() => setIdx((i) => i + 1)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-black/60 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/80 transition-colors z-10"
             >
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4">
                 <polyline points="9 18 15 12 9 6" />
               </svg>
             </button>
           )}
-          <div className="absolute bottom-3 left-0 right-0 flex justify-center">
+          {/* Page indicator — bottom-center */}
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center z-10">
             <span className="px-2.5 py-0.5 rounded-full text-xs text-white font-medium bg-black/60 backdrop-blur-sm">
               {idx + 1}/{urls.length}
             </span>
           </div>
         </>
       )}
-    </div>
-  )
-}
-
-function LockedOverlay({ price, postId, onUnlock }: { price?: number | null; postId: string; onUnlock?: (id: string) => void }) {
-  return (
-    <div
-      className="relative w-full aspect-[4/5] max-h-96 overflow-hidden flex items-center justify-center"
-      style={{
-        background: 'linear-gradient(135deg, rgba(224,64,251,0.18), rgba(124,77,255,0.18), rgba(13,13,15,0.7))',
-      }}
-    >
-      {/* Blurred gradient shapes */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute top-0 left-0 w-full h-full" style={{ background: 'linear-gradient(135deg, rgba(224,64,251,0.3), rgba(124,77,255,0.3))' }} />
-      </div>
-      {/* Dark overlay */}
-      <div className="absolute inset-0" style={{ background: 'rgba(13,13,15,0.55)' }} />
-      {/* Content */}
-      <div className="relative z-10 flex flex-col items-center text-center px-6">
-        <div
-          className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-          style={{
-            background: 'linear-gradient(135deg, rgba(224,64,251,0.2), rgba(124,77,255,0.2))',
-            border: '1px solid rgba(224,64,251,0.35)',
-            backdropFilter: 'blur(8px)',
-          }}
-        >
-          <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="url(#lock-grad-ov)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <defs>
-              <linearGradient id="lock-grad-ov" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#e040fb" />
-                <stop offset="100%" stopColor="#7c4dff" />
-              </linearGradient>
-            </defs>
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-          </svg>
-        </div>
-        {price ? (
-          <>
-            <p className="text-white font-bold text-lg mb-1">${Number(price).toFixed(2)}</p>
-            <p className="text-white/60 text-xs mb-4">One-time unlock</p>
-            <UnlockButton postId={postId} price={price} onUnlock={onUnlock} />
-          </>
-        ) : (
-          <>
-            <p className="text-white font-semibold text-sm mb-1">Subscribers only</p>
-            <p className="text-white/50 text-xs">Subscribe to unlock this content</p>
-          </>
-        )}
-      </div>
     </div>
   )
 }
@@ -210,7 +218,6 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
 
   const handleLike = async () => {
     if (likeLoading) return
-    // Optimistic update
     const wasLiked = liked
     setLiked(!wasLiked)
     setLikeCount(c => wasLiked ? c - 1 : c + 1)
@@ -226,7 +233,6 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
         setLiked(data.liked)
         setLikeCount(data.count)
       } else {
-        // Revert optimistic
         setLiked(wasLiked)
         setLikeCount(c => wasLiked ? c + 1 : c - 1)
       }
@@ -276,7 +282,7 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
   }
 
   return (
-    <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] overflow-hidden">
+    <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] overflow-hidden mb-4">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-3">
         <a href={`/${post.creator.username}`}>
@@ -288,9 +294,7 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
           </a>
           <div className="text-xs text-[#8888a0] mt-0.5">@{post.creator.username}</div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs text-[#8888a0]">{timestamp}</span>
-        </div>
+        <span className="text-xs text-[#8888a0] shrink-0">{timestamp}</span>
       </div>
 
       {/* Caption — always visible */}
@@ -308,21 +312,39 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
       {/* Media */}
       {post.mediaUrls.length > 0 && (
         <div className="overflow-hidden">
-          {isBlurred ? (
-            // Locked: show gradient placeholder, never real image
-            <LockedOverlay price={post.price} postId={post.id} onUnlock={onUnlock} />
-          ) : isVideo ? (
-            <div className="relative w-full aspect-[9/16] max-h-[600px] bg-black flex items-center justify-center overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+          {isVideo ? (
+            /* Video — always show, blurred if locked */
+            <div className="relative w-full aspect-[4/5] max-h-[500px] bg-black overflow-hidden">
               <video
                 src={post.mediaUrls[0]}
-                className="w-full h-full object-cover"
-                controls
+                className={`w-full h-full object-cover ${isBlurred ? 'blur-xl scale-105' : ''}`}
+                controls={!isBlurred}
                 playsInline
               />
+              {isBlurred && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="bg-black/60 backdrop-blur-sm rounded-2xl px-6 py-4 flex flex-col items-center gap-2 text-center">
+                    <svg className="w-8 h-8 text-white/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                    <p className="text-white font-semibold text-sm">
+                      {post.price ? `$${Number(post.price).toFixed(2)} unlock` : 'Subscribers only'}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
-            <ImageCarousel urls={post.mediaUrls} />
+            /* Image carousel — Fanvue style */
+            <ImageCarousel
+              urls={post.mediaUrls}
+              isBlurred={isBlurred}
+              isLocked={post.isLocked}
+              price={post.price}
+              postId={post.id}
+              onUnlock={onUnlock}
+            />
           )}
         </div>
       )}
@@ -359,29 +381,11 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
           </svg>
           <span className="font-medium">{comments.length}</span>
         </button>
-
-        {/* PPV badge */}
-        {post.isLocked && post.price && !isUnlocked && (
-          <div
-            className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold"
-            style={{
-              background: 'linear-gradient(135deg, rgba(224,64,251,0.12), rgba(124,77,255,0.12))',
-              border: '1px solid rgba(224,64,251,0.25)',
-              color: '#e040fb',
-            }}
-          >
-            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C9.24 2 7 4.24 7 7v1H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-2V7c0-2.76-2.24-5-5-5zm0 2c1.66 0 3 1.34 3 3v1H9V7c0-1.66 1.34-3 3-3zm0 10a2 2 0 1 1 0-4 2 2 0 0 1 0 4z" />
-            </svg>
-            ${Number(post.price).toFixed(2)}
-          </div>
-        )}
       </div>
 
       {/* Comments section */}
       {showComments && (
         <div className="border-t border-[#1e1e21] px-4 pb-4">
-          {/* Comment list */}
           <div className="pt-3 space-y-3 max-h-64 overflow-y-auto">
             {!commentsLoaded && (
               <div className="flex justify-center py-4">
@@ -404,7 +408,6 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
               </div>
             ))}
           </div>
-          {/* Comment input */}
           <form onSubmit={handleSubmitComment} className="flex items-center gap-2 mt-3">
             <input
               type="text"
