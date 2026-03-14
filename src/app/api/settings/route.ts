@@ -54,7 +54,6 @@ export async function PATCH(req: NextRequest) {
         role: true,
         isCreator: true,
         subscriptionPrice: true,
-        creditBalance: true,
       },
     })
 

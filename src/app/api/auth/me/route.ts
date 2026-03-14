@@ -24,7 +24,6 @@ export async function GET() {
         role: true,
         isCreator: true,
         subscriptionPrice: true,
-        creditBalance: true,
       },
     })
 

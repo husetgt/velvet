@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
+import UnlockButton from './UnlockButton'
 
 interface Post {
   id: string
@@ -26,28 +26,8 @@ interface PostCardProps {
 }
 
 export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCardProps) {
-  const [unlocking, setUnlocking] = useState(false)
   const [liked, setLiked] = useState(false)
   const isBlurred = post.isLocked && !isUnlocked
-
-  const handleUnlock = async () => {
-    if (!onUnlock) return
-    setUnlocking(true)
-    try {
-      const res = await fetch('/api/unlock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ postId: post.id }),
-      })
-      if (res.ok) onUnlock(post.id)
-      else {
-        const data = await res.json()
-        alert(data.error || 'Failed to unlock post')
-      }
-    } finally {
-      setUnlocking(false)
-    }
-  }
 
   const dateStr = typeof post.createdAt === 'string'
     ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -107,15 +87,12 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
               <p className="text-[#8888a0] text-sm mb-4">
                 {post.price ? `$${Number(post.price).toFixed(2)} one-time` : 'Subscribe to access'}
               </p>
-              {post.price && onUnlock && (
-                <button
-                  onClick={handleUnlock}
-                  disabled={unlocking}
-                  className="px-6 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
-                  style={{background: 'linear-gradient(135deg, #e040fb, #7c4dff)'}}
-                >
-                  {unlocking ? 'Unlocking...' : `Unlock for $${Number(post.price).toFixed(2)}`}
-                </button>
+              {post.price && (
+                <UnlockButton
+                  postId={post.id}
+                  price={Number(post.price)}
+                  onUnlock={onUnlock}
+                />
               )}
             </div>
           )}

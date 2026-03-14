@@ -26,7 +26,6 @@ export default async function DashboardPage() {
         displayName: user.displayName,
         username: user.username,
         role: user.role,
-        creditBalance: user.creditBalance,
         subscriberCount: user._count.subscribers,
         posts: user.posts.map((p: typeof user.posts[number]) => ({
           id: p.id,

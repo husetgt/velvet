@@ -19,7 +19,6 @@ interface User {
   displayName: string
   username: string
   role: string
-  creditBalance: number
   subscriberCount: number
   posts: Post[]
 }
@@ -98,12 +97,7 @@ export default function DashboardClient({ user }: { user: User }) {
                 <div className="text-xs text-[#8888a0]">@{user.username}</div>
               </div>
             </div>
-            <div className="mt-3 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#1e1e21]">
-              <span className="w-1.5 h-1.5 rounded-full" style={{background: 'linear-gradient(135deg, #e040fb, #7c4dff)'}} />
-              <span className="text-xs velvet-gradient-text font-semibold">
-                ${(user.creditBalance / 100).toFixed(2)} credits
-              </span>
-            </div>
+
           </div>
 
           {/* Nav */}
@@ -122,13 +116,6 @@ export default function DashboardClient({ user }: { user: User }) {
                 {tab.label}
               </button>
             ))}
-
-            <Link
-              href="/credits"
-              className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-[#8888a0] hover:text-white hover:bg-[#1e1e21] transition-all block mt-1"
-            >
-              Add Credits
-            </Link>
 
             {isCreator && (
               <Link
@@ -289,7 +276,6 @@ export default function DashboardClient({ user }: { user: User }) {
                 {[
                   { label: 'Subscribers', value: user.subscriberCount.toLocaleString() },
                   { label: 'Total Posts', value: user.posts.length.toString() },
-                  { label: 'Credit Balance', value: `$${(user.creditBalance / 100).toFixed(2)}` },
                   { label: 'Locked Posts', value: user.posts.filter(p => p.isLocked).length.toString() },
                 ].map(stat => (
                   <div key={stat.label} className="p-6 rounded-2xl border border-[#2a2a30] bg-[#161618]">

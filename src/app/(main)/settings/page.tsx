@@ -12,7 +12,6 @@ interface UserInfo {
   role: string
   isCreator: boolean
   subscriptionPrice?: number | null
-  creditBalance: number
 }
 
 export default function SettingsPage() {
@@ -101,7 +100,6 @@ export default function SettingsPage() {
         user={{
           displayName: user.displayName,
           username: user.username,
-          creditBalance: user.creditBalance,
           role: user.role,
         }}
         activePath="/settings"

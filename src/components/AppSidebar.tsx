@@ -7,7 +7,6 @@ interface AppSidebarProps {
   user: {
     displayName: string
     username: string
-    creditBalance: number
     role: string
   }
   activePath: string
@@ -20,7 +19,6 @@ const NAV_LINKS = [
   { href: '/notifications', emoji: '🔔', label: 'Notifications' },
   { href: '/profile', emoji: '👤', label: 'Profile' },
   { href: '/settings', emoji: '⚙️', label: 'Settings' },
-  { href: '/credits', emoji: '💳', label: 'Credits' },
 ]
 
 export default function AppSidebar({ user, activePath }: AppSidebarProps) {
@@ -55,15 +53,7 @@ export default function AppSidebar({ user, activePath }: AppSidebarProps) {
             <div className="text-xs text-[#8888a0] truncate">@{user.username}</div>
           </div>
         </div>
-        <div className="mt-3 flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#1e1e21]">
-          <span
-            className="w-1.5 h-1.5 rounded-full shrink-0"
-            style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
-          />
-          <span className="text-xs velvet-gradient-text font-semibold">
-            ${(user.creditBalance / 100).toFixed(2)} credits
-          </span>
-        </div>
+
       </div>
 
       {/* Nav links */}

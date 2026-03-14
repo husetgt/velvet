@@ -20,7 +20,6 @@ export default async function NotificationsPage() {
         user={{
           displayName: user.displayName,
           username: user.username,
-          creditBalance: user.creditBalance,
           role: user.role,
         }}
         activePath="/notifications"

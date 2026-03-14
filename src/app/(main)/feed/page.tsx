@@ -69,7 +69,6 @@ export default async function FeedPage() {
         user={{
           displayName: user.displayName,
           username: user.username,
-          creditBalance: user.creditBalance,
           role: user.role,
         }}
         activePath="/feed"

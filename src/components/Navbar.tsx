@@ -10,7 +10,7 @@ export default async function Navbar() {
   if (user?.email) {
     dbUser = await prisma.user.findUnique({
       where: { email: user.email },
-      select: { displayName: true, username: true, creditBalance: true, role: true },
+      select: { displayName: true, username: true, role: true },
     }).catch(() => null)
   }
 
@@ -28,23 +28,13 @@ export default async function Navbar() {
           {dbUser && (
             <Link href="/dashboard" className="hover:text-white transition-colors">Dashboard</Link>
           )}
-          {dbUser && (
-            <Link href="/credits" className="hover:text-white transition-colors">Add Credits</Link>
-          )}
+
         </nav>
 
         {/* Right side */}
         <div className="flex items-center gap-3">
           {dbUser ? (
             <>
-              {/* Credit balance */}
-              <Link href="/credits" className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1e1e21] border border-[#2a2a30] text-sm hover:border-[#e040fb44] transition-all">
-                <span className="w-1.5 h-1.5 rounded-full" style={{background: 'linear-gradient(135deg, #e040fb, #7c4dff)'}} />
-                <span className="velvet-gradient-text font-semibold">
-                  ${((dbUser.creditBalance ?? 0) / 100).toFixed(2)}
-                </span>
-              </Link>
-
               {/* User avatar / link */}
               <Link
                 href={dbUser.role === 'CREATOR' ? `/dashboard` : `/`}

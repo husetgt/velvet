@@ -17,20 +17,19 @@ model User {
   isCreator         Boolean  @default(false)
   coverUrl          String?
   subscriptionPrice Decimal? @db.Decimal(10, 2)
-  creditBalance     Int      @default(0)
+  stripePriceId     String?
   stripeCustomerId  String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  posts              Post[]
-  subscriptions      Subscription[]     @relation("subscriber")
-  subscribers        Subscription[]     @relation("creator")
-  sentMessages       Message[]          @relation("sender")
-  receivedMessages   Message[]          @relation("receiver")
-  unlockedPosts      PostUnlock[]
-  tipsGiven          Tip[]              @relation("tipper")
-  tipsReceived       Tip[]              @relation("creator")
-  creditTransactions CreditTransaction[]
+  posts         Post[]
+  subscriptions Subscription[] @relation("subscriber")
+  subscribers   Subscription[] @relation("creator")
+  sentMessages  Message[]      @relation("sender")
+  receivedMessages Message[]   @relation("receiver")
+  unlockedPosts PostUnlock[]
+  tipsGiven     Tip[]          @relation("tipper")
+  tipsReceived  Tip[]          @relation("creator")
 }
 
 model Post {
@@ -106,18 +105,6 @@ model Tip {
   post    Post? @relation(fields: [postId], references: [id], onDelete: SetNull)
 }
 
-model CreditTransaction {
-  id                    String          @id @default(cuid())
-  userId                String
-  amount                Int
-  type                  TransactionType
-  description           String?
-  stripePaymentIntentId String?
-  createdAt             DateTime        @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
-
 enum Role {
   FAN
   CREATOR
@@ -128,12 +115,4 @@ enum SubStatus {
   ACTIVE
   CANCELLED
   EXPIRED
-}
-
-enum TransactionType {
-  DEPOSIT
-  SUBSCRIPTION
-  UNLOCK
-  TIP
-  PAYOUT
 }

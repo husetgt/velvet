@@ -17,36 +17,105 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session
-      const { userId, creditAmount, type } = session.metadata ?? {}
+    switch (event.type) {
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object as Stripe.Invoice & { subscription?: string | null }
+        const stripeSubscriptionId = invoice.subscription as string | null
+        if (!stripeSubscriptionId) break
 
-      if (type === 'DEPOSIT' && userId && creditAmount) {
-        const amount = parseInt(creditAmount)
-        await prisma.$transaction([
-          prisma.user.update({
-            where: { id: userId },
-            data: { creditBalance: { increment: amount } },
-          }),
-          prisma.creditTransaction.create({
-            data: {
-              userId,
-              amount,
-              type: 'DEPOSIT',
-              description: `Credits deposit via Stripe`,
-              stripePaymentIntentId: session.payment_intent as string,
-            },
-          }),
-        ])
+        const subscription = await stripe.subscriptions.retrieve(stripeSubscriptionId) as unknown as Stripe.Subscription & { current_period_end: number }
+        const fanId = subscription.metadata?.fanId
+        const creatorId = subscription.metadata?.creatorId
+        if (!fanId || !creatorId) break
+
+        const periodEnd = new Date(subscription.current_period_end * 1000)
+
+        await prisma.subscription.upsert({
+          where: { subscriberId_creatorId: { subscriberId: fanId, creatorId } },
+          create: {
+            subscriberId: fanId,
+            creatorId,
+            status: 'ACTIVE',
+            stripeSubscriptionId,
+            currentPeriodEnd: periodEnd,
+          },
+          update: {
+            status: 'ACTIVE',
+            stripeSubscriptionId,
+            currentPeriodEnd: periodEnd,
+          },
+        })
+        break
       }
-    }
 
-    if (event.type === 'customer.subscription.deleted') {
-      const sub = event.data.object as Stripe.Subscription
-      await prisma.subscription.updateMany({
-        where: { stripeSubscriptionId: sub.id },
-        data: { status: 'CANCELLED' },
-      })
+      case 'customer.subscription.deleted': {
+        const sub = event.data.object as Stripe.Subscription
+        await prisma.subscription.updateMany({
+          where: { stripeSubscriptionId: sub.id },
+          data: { status: 'CANCELLED' },
+        })
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice & { subscription?: string | null }
+        const stripeSubscriptionId = invoice.subscription as string | null
+        if (!stripeSubscriptionId) break
+
+        await prisma.subscription.updateMany({
+          where: { stripeSubscriptionId },
+          data: { status: 'EXPIRED' },
+        })
+        break
+      }
+
+      case 'payment_intent.succeeded': {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent
+        const { type, postId, userId, creatorId, tipperId, message } = paymentIntent.metadata
+
+        if (type === 'unlock' && postId && userId) {
+          const post = await prisma.post.findUnique({ where: { id: postId } })
+          if (post) {
+            await prisma.postUnlock.upsert({
+              where: { userId_postId: { userId, postId } },
+              create: { userId, postId, paidPrice: post.price ?? 0 },
+              update: {},
+            })
+          }
+        }
+
+        if (type === 'tip' && creatorId && tipperId) {
+          const amountDollars = paymentIntent.amount / 100
+          // Idempotency: check if tip already exists for this paymentIntentId not available on Tip model,
+          // so we just create; the confirm-tip endpoint is the primary path.
+          // This webhook serves as a fallback.
+          const existingTips = await prisma.tip.findMany({
+            where: {
+              tipperId,
+              creatorId,
+              amount: amountDollars,
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          })
+          // Only create if no recent tip (within 30s) to avoid duplicates
+          const recentCutoff = new Date(Date.now() - 30000)
+          if (!existingTips.length || existingTips[0].createdAt < recentCutoff) {
+            await prisma.tip.create({
+              data: {
+                tipperId,
+                creatorId,
+                amount: amountDollars,
+                message: message || null,
+              },
+            })
+          }
+        }
+        break
+      }
+
+      default:
+        break
     }
   } catch (err) {
     console.error('Webhook handler error', err)

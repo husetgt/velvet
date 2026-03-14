@@ -9,7 +9,6 @@ interface UserInfo {
   username: string
   displayName: string
   avatarUrl?: string | null
-  creditBalance: number
   role: string
 }
 
@@ -173,7 +172,6 @@ export default function MessagesPage() {
         user={{
           displayName: currentUser.displayName,
           username: currentUser.username,
-          creditBalance: currentUser.creditBalance,
           role: currentUser.role,
         }}
         activePath="/messages"

@@ -4,6 +4,8 @@ import Navbar from '@/components/Navbar'
 import { prisma } from '@/lib/prisma'
 import { createClient } from '@/lib/supabase/server'
 import PostCard from '@/components/PostCard'
+import SubscribeButton from '@/components/SubscribeButton'
+import TipButton from '@/components/TipButton'
 
 interface Props {
   params: Promise<{ username: string }>
@@ -88,22 +90,20 @@ export default async function CreatorProfilePage({ params }: Props) {
             </div>
 
             <div className="flex flex-col items-end gap-2">
-              {!isSubscribed && currentUser?.id !== creator.id && (
-                <form action="/api/subscribe" method="POST">
-                  <input type="hidden" name="creatorId" value={creator.id} />
-                  <button
-                    type="submit"
-                    className="px-6 py-2.5 rounded-xl font-semibold text-white text-sm hover:opacity-90 transition-opacity"
-                    style={{background: 'linear-gradient(135deg, #e040fb, #7c4dff)'}}
-                  >
-                    Subscribe · ${creator.subscriptionPrice ? Number(creator.subscriptionPrice).toFixed(2) : '9.99'}/mo
-                  </button>
-                </form>
+              {!isSubscribed && currentUser && currentUser.id !== creator.id && (
+                <SubscribeButton
+                  creatorId={creator.id}
+                  creatorName={creator.displayName}
+                  price={creator.subscriptionPrice ? Number(creator.subscriptionPrice) : 9.99}
+                />
               )}
               {isSubscribed && (
                 <span className="px-4 py-2 rounded-xl text-sm font-medium text-[#e040fb] border border-[#e040fb33]">
                   ✓ Subscribed
                 </span>
+              )}
+              {currentUser && currentUser.id !== creator.id && (
+                <TipButton creatorId={creator.id} creatorName={creator.displayName} />
               )}
             </div>
           </div>

@@ -29,7 +29,6 @@ export default async function ExplorePage() {
         user={{
           displayName: user.displayName,
           username: user.username,
-          creditBalance: user.creditBalance,
           role: user.role,
         }}
         activePath="/explore"
