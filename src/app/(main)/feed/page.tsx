@@ -66,14 +66,24 @@ async function FeedContent() {
   const allCreatorIds = [...new Set([...subscribedCreatorIds, ...followedCreatorIds])]
   const unlockedPostIds = new Set(unlocks.map((u: { postId: string }) => u.postId))
 
+  const now = new Date()
   const posts = allCreatorIds.length
     ? await prisma.post.findMany({
         where: {
+          // Filter out future-scheduled posts
           OR: [
-            // All posts from subscribed creators
-            { creatorId: { in: [...subscribedCreatorIds] } },
-            // Only free posts from followed-only creators
-            { creatorId: { in: [...followedCreatorIds].filter(id => !subscribedCreatorIds.has(id)) }, isLocked: false, price: null },
+            { scheduledAt: null },
+            { scheduledAt: { lte: now } },
+          ],
+          AND: [
+            {
+              OR: [
+                // All posts from subscribed creators
+                { creatorId: { in: [...subscribedCreatorIds] } },
+                // Only free posts from followed-only creators
+                { creatorId: { in: [...followedCreatorIds].filter(id => !subscribedCreatorIds.has(id)) }, isLocked: false, price: null },
+              ],
+            },
           ],
         },
         include: { creator: { select: { username: true, displayName: true, avatarUrl: true } } },

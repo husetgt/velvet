@@ -12,8 +12,17 @@ export async function POST(req: NextRequest) {
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
     if (!user.isCreator) return NextResponse.json({ error: 'Only creators can post' }, { status: 403 })
 
-    const { title, content, mediaUrls, isLocked, price } = await req.json()
+    const { title, content, mediaUrls, isLocked, price, scheduledAt } = await req.json()
     if (!content?.trim()) return NextResponse.json({ error: 'Content is required' }, { status: 400 })
+
+    // Parse scheduledAt safely
+    let scheduledAtDate: Date | null = null
+    if (scheduledAt) {
+      const parsed = new Date(scheduledAt)
+      if (!isNaN(parsed.getTime())) {
+        scheduledAtDate = parsed
+      }
+    }
 
     const post = await prisma.post.create({
       data: {
@@ -23,6 +32,7 @@ export async function POST(req: NextRequest) {
         mediaUrls: Array.isArray(mediaUrls) ? mediaUrls : [],
         isLocked: Boolean(isLocked),
         price: isLocked && price ? price : null,
+        scheduledAt: scheduledAtDate,
       },
     })
 

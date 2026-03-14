@@ -91,7 +91,7 @@ function AvatarCircle({ name, avatarUrl, size = 'md', online = false }: { name: 
   )
 }
 
-function LockedMessageBubble({ msg, isMine, onUnlock }: { msg: MessageItem; isMine: boolean; onUnlock: (id: string) => void }) {
+function LockedMessageBubble({ msg, isMine, isCreatorViewing, onUnlock }: { msg: MessageItem; isMine: boolean; isCreatorViewing: boolean; onUnlock: (id: string) => void }) {
   const [unlocking, setUnlocking] = useState(false)
   const price = msg.mediaPrice ?? msg.price
   const handleUnlock = async () => {
@@ -107,15 +107,44 @@ function LockedMessageBubble({ msg, isMine, onUnlock }: { msg: MessageItem; isMi
       else alert(data.error || 'Failed to unlock')
     } finally { setUnlocking(false) }
   }
+
+  // Creator viewing their own sent PPV message — show image normally + payment status
+  if (isCreatorViewing && isMine) {
+    return (
+      <div className="rounded-2xl overflow-hidden" style={{ maxWidth: 220 }}>
+        {msg.mediaUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={msg.mediaUrl} alt="" className="w-full max-w-[220px] object-cover rounded-t-2xl" />
+        )}
+        <div className="px-3 py-2" style={{ background: 'rgba(224,64,251,0.08)', border: '1px solid rgba(224,64,251,0.2)', borderTop: 'none' }}>
+          {msg.content && msg.content !== `PPV media · $${Number(price ?? 0).toFixed(2)} to unlock` && (
+            <p className="text-white text-xs mb-1">{msg.content}</p>
+          )}
+          {price && <p className="text-[#e040fb] text-xs font-bold">PPV · ${Number(price).toFixed(2)}</p>}
+          {/* Payment status indicator — simplified, shows lock state */}
+          <p className="text-[10px] mt-1 text-[#8888a0]">
+            Sent as pay-to-view
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // Fan viewing locked PPV — show gradient placeholder, never actual image
   return (
     <div className="relative rounded-2xl overflow-hidden" style={{ width: 220, background: 'linear-gradient(135deg, rgba(224,64,251,0.1), rgba(124,77,255,0.1))', border: '1px solid rgba(224,64,251,0.25)' }}>
-      <div className="h-24 relative" style={{ background: 'linear-gradient(135deg, rgba(224,64,251,0.2), rgba(124,77,255,0.2))' }}>
+      {/* Text part always visible above lock */}
+      {msg.content && msg.content !== `PPV media · $${Number(price ?? 0).toFixed(2)} to unlock` && (
+        <div className="px-3 pt-2.5">
+          <p className="text-white text-xs font-medium">{msg.content}</p>
+        </div>
+      )}
+      <div className="h-24 relative mx-3 mt-2 rounded-xl overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(224,64,251,0.2), rgba(124,77,255,0.2))' }}>
         <div className="absolute inset-0 flex items-center justify-center">
-          <svg className="w-8 h-8 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          <svg className="w-8 h-8 opacity-60" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
       </div>
       <div className="px-3 py-2.5">
-        <p className="text-white text-xs font-medium mb-0.5">{msg.content}</p>
         {price && <p className="text-[#e040fb] text-xs font-bold mb-2">${Number(price).toFixed(2)} to unlock</p>}
         {!isMine && (
           <button onClick={handleUnlock} disabled={unlocking} className="w-full py-1.5 rounded-lg text-xs font-bold text-white disabled:opacity-50 transition-opacity hover:opacity-90" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
@@ -630,7 +659,7 @@ function MessagesPageInner() {
                         {!isMine && <AvatarCircle name={msg.sender.displayName} avatarUrl={msg.sender.avatarUrl} size="xs" />}
                         <div className={`flex flex-col gap-0.5 ${isMine ? 'items-end' : 'items-start'}`}>
                           {isLockedPPV ? (
-                            <LockedMessageBubble msg={msg} isMine={isMine} onUnlock={handleUnlockMessage} />
+                            <LockedMessageBubble msg={msg} isMine={isMine} isCreatorViewing={isCreator} onUnlock={handleUnlockMessage} />
                           ) : msg.mediaUrl && !msg.isMediaLocked ? (
                             <div className="rounded-2xl overflow-hidden max-w-xs">
                               {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -40,23 +40,51 @@ model User {
   receivedLinkRequests AccountLink[]   @relation("linkTarget")
   following            Follow[]        @relation("follower")
   followers            Follow[]        @relation("creator")
+  postLikes            PostLike[]
+  comments             Comment[]
 }
 
 model Post {
-  id         String   @id @default(cuid())
-  creatorId  String
-  title      String?
-  content    String
-  mediaUrls  String[]
-  isLocked   Boolean  @default(false)
-  price      Decimal? @db.Decimal(10, 2)
-  likesCount Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String    @id @default(cuid())
+  creatorId   String
+  title       String?
+  content     String
+  mediaUrls   String[]
+  isLocked    Boolean   @default(false)
+  price       Decimal?  @db.Decimal(10, 2)
+  likesCount  Int       @default(0)
+  scheduledAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  creator User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  unlocks PostUnlock[]
-  tips    Tip[]
+  creator  User        @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  unlocks  PostUnlock[]
+  tips     Tip[]
+  likes    PostLike[]
+  comments Comment[]
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  content   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 }
 
 model Subscription {

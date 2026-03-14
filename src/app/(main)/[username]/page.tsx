@@ -24,7 +24,7 @@ export default async function UserProfilePage({ params }: Props) {
   const profileUser = await prisma.user.findUnique({
     where: { username },
     include: {
-      posts: { orderBy: { createdAt: 'desc' }, take: 30 },
+      posts: { orderBy: { createdAt: 'desc' }, take: 50 },
       _count: { select: { subscribers: true, posts: true } },
     },
   })
@@ -91,7 +91,15 @@ export default async function UserProfilePage({ params }: Props) {
     unlockedPostIds = unlocks.map((u: { postId: string }) => u.postId)
   }
 
-  const postsWithAccess = profileUser.posts.map((post: typeof profileUser.posts[number]) => ({
+  // Filter scheduled posts — viewers cannot see future-scheduled posts; creators see all their own
+  const now = new Date()
+  const visiblePosts = isOwnProfile
+    ? profileUser.posts
+    : profileUser.posts.filter((p: typeof profileUser.posts[number]) => {
+        return !p.scheduledAt || p.scheduledAt <= now
+      }).slice(0, 30)
+
+  const postsWithAccess = visiblePosts.map((post: typeof profileUser.posts[number]) => ({
     ...post,
     isUnlocked: !post.isLocked || isSubscribed || unlockedPostIds.includes(post.id),
     price: post.price ? Number(post.price) : null,
@@ -105,10 +113,10 @@ export default async function UserProfilePage({ params }: Props) {
 
   const subPrice = profileUser.subscriptionPrice ? Number(profileUser.subscriptionPrice) : 9.99
 
-  const photoPosts = profileUser.posts.filter((p: typeof profileUser.posts[number]) =>
+  const photoPosts = visiblePosts.filter((p: typeof profileUser.posts[number]) =>
     p.mediaUrls.length > 0 && !p.mediaUrls[0].match(/\.(mp4|mov|webm|ogg)/i)
   ).length
-  const videoPosts = profileUser.posts.filter((p: typeof profileUser.posts[number]) =>
+  const videoPosts = visiblePosts.filter((p: typeof profileUser.posts[number]) =>
     p.mediaUrls.length > 0 && !!p.mediaUrls[0].match(/\.(mp4|mov|webm|ogg)/i)
   ).length
 
@@ -185,6 +193,7 @@ export default async function UserProfilePage({ params }: Props) {
                 </Link>
               ) : currentUser ? (
                 <>
+                  <FollowButton creatorId={profileUser.id} initialIsFollowing={isFollowing} />
                   {isSubscribed ? (
                     <>
                       <Link
@@ -200,7 +209,18 @@ export default async function UserProfilePage({ params }: Props) {
                     </>
                   ) : (
                     <>
-                      <FollowButton creatorId={profileUser.id} initialIsFollowing={isFollowing} />
+                      {/* Message button — locked if not subscribed */}
+                      <button
+                        disabled
+                        title="Subscribe to message"
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-semibold border border-[#3a3a44] text-[#555568] cursor-not-allowed min-h-[38px] opacity-60"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                        </svg>
+                        Message
+                      </button>
                       <SubscribeButton creatorId={profileUser.id} creatorName={profileUser.displayName} price={subPrice} />
                     </>
                   )}
@@ -297,13 +317,15 @@ export default async function UserProfilePage({ params }: Props) {
         )}
       </div>
 
-      {/* ── Right panel: Intro video ─────────────────────────────────────── */}
-      <ProfileIntroPanel
-        username={profileUser.username}
-        introVideoUrl={introVideoUrl}
-        isOwnProfile={isOwnProfile}
-        coverUrl={profileUser.coverUrl ?? null}
-      />
+      {/* ── Right panel: Intro video — ONLY for creator viewing their own profile ── */}
+      {isOwnProfile && profileUser.isCreator && (
+        <ProfileIntroPanel
+          username={profileUser.username}
+          introVideoUrl={introVideoUrl}
+          isOwnProfile={isOwnProfile}
+          coverUrl={profileUser.coverUrl ?? null}
+        />
+      )}
     </div>
   )
 }

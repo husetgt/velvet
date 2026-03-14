@@ -1,7 +1,21 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import UnlockButton from './UnlockButton'
+
+interface CommentItem {
+  id: string
+  userId: string
+  postId: string
+  content: string
+  createdAt: string
+  user: {
+    id: string
+    displayName: string
+    username: string
+    avatarUrl?: string | null
+  }
+}
 
 interface Post {
   id: string
@@ -64,7 +78,7 @@ function CreatorAvatar({ displayName, avatarUrl }: { displayName: string; avatar
 function ImageCarousel({ urls }: { urls: string[] }) {
   const [idx, setIdx] = useState(0)
   return (
-    <div className="relative aspect-[4/5] bg-black overflow-hidden">
+    <div className="relative w-full aspect-[4/5] max-h-96 bg-black overflow-hidden">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={urls[idx]}
@@ -73,7 +87,6 @@ function ImageCarousel({ urls }: { urls: string[] }) {
       />
       {urls.length > 1 && (
         <>
-          {/* Prev */}
           {idx > 0 && (
             <button
               onClick={() => setIdx((i) => i - 1)}
@@ -84,7 +97,6 @@ function ImageCarousel({ urls }: { urls: string[] }) {
               </svg>
             </button>
           )}
-          {/* Next */}
           {idx < urls.length - 1 && (
             <button
               onClick={() => setIdx((i) => i + 1)}
@@ -95,7 +107,6 @@ function ImageCarousel({ urls }: { urls: string[] }) {
               </svg>
             </button>
           )}
-          {/* Page indicator */}
           <div className="absolute bottom-3 left-0 right-0 flex justify-center">
             <span className="px-2.5 py-0.5 rounded-full text-xs text-white font-medium bg-black/60 backdrop-blur-sm">
               {idx + 1}/{urls.length}
@@ -110,7 +121,7 @@ function ImageCarousel({ urls }: { urls: string[] }) {
 function LockedOverlay({ price, postId, onUnlock }: { price?: number | null; postId: string; onUnlock?: (id: string) => void }) {
   return (
     <div
-      className="relative aspect-[4/5] overflow-hidden flex items-center justify-center"
+      className="relative w-full aspect-[4/5] max-h-96 overflow-hidden flex items-center justify-center"
       style={{
         background: 'linear-gradient(135deg, rgba(224,64,251,0.18), rgba(124,77,255,0.18), rgba(13,13,15,0.7))',
       }}
@@ -159,15 +170,110 @@ function LockedOverlay({ price, postId, onUnlock }: { price?: number | null; pos
   )
 }
 
+function CommentAvatar({ displayName, avatarUrl }: { displayName: string; avatarUrl?: string | null }) {
+  const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+  if (avatarUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={avatarUrl} alt={displayName} className="w-7 h-7 rounded-full object-cover shrink-0" />
+  }
+  return (
+    <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0" style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}>
+      {initials}
+    </div>
+  )
+}
+
 export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCardProps) {
   const [liked, setLiked] = useState(false)
-  const [commentCount] = useState(0)
+  const [likeCount, setLikeCount] = useState(post.likesCount)
+  const [likeLoading, setLikeLoading] = useState(false)
+  const [showComments, setShowComments] = useState(false)
+  const [comments, setComments] = useState<CommentItem[]>([])
+  const [commentsLoaded, setCommentsLoaded] = useState(false)
+  const [commentInput, setCommentInput] = useState('')
+  const [submittingComment, setSubmittingComment] = useState(false)
 
   const isBlurred = post.isLocked && !isUnlocked
   const timestamp = timeAgo(post.createdAt)
-
-  // Detect video URLs
   const isVideo = post.mediaUrls.length > 0 && /\.(mp4|mov|webm|ogg)(\?|$)/i.test(post.mediaUrls[0])
+
+  // Load like state on mount
+  useEffect(() => {
+    fetch(`/api/posts/${post.id}/likes`)
+      .then(r => r.json())
+      .then(d => {
+        if (typeof d.count === 'number') setLikeCount(d.count)
+        if (typeof d.liked === 'boolean') setLiked(d.liked)
+      })
+      .catch(() => {})
+  }, [post.id])
+
+  const handleLike = async () => {
+    if (likeLoading) return
+    // Optimistic update
+    const wasLiked = liked
+    setLiked(!wasLiked)
+    setLikeCount(c => wasLiked ? c - 1 : c + 1)
+    setLikeLoading(true)
+    try {
+      const res = await fetch('/api/posts/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: post.id }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setLiked(data.liked)
+        setLikeCount(data.count)
+      } else {
+        // Revert optimistic
+        setLiked(wasLiked)
+        setLikeCount(c => wasLiked ? c + 1 : c - 1)
+      }
+    } catch {
+      setLiked(wasLiked)
+      setLikeCount(c => wasLiked ? c + 1 : c - 1)
+    } finally {
+      setLikeLoading(false)
+    }
+  }
+
+  const loadComments = async () => {
+    if (commentsLoaded) return
+    try {
+      const res = await fetch(`/api/posts/${post.id}/comments`)
+      const data = await res.json()
+      if (data.comments) setComments(data.comments)
+      setCommentsLoaded(true)
+    } catch {}
+  }
+
+  const handleToggleComments = () => {
+    if (!showComments && !commentsLoaded) {
+      loadComments()
+    }
+    setShowComments(v => !v)
+  }
+
+  const handleSubmitComment = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!commentInput.trim() || submittingComment) return
+    setSubmittingComment(true)
+    try {
+      const res = await fetch('/api/posts/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ postId: post.id, content: commentInput.trim() }),
+      })
+      const data = await res.json()
+      if (res.ok && data.comment) {
+        setComments(prev => [...prev, data.comment])
+        setCommentInput('')
+      }
+    } finally {
+      setSubmittingComment(false)
+    }
+  }
 
   return (
     <div className="rounded-2xl border border-[#2a2a30] bg-[#161618] overflow-hidden">
@@ -180,7 +286,6 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <span className="text-xs text-[#8888a0]">{timestamp}</span>
-          {/* Three-dot menu */}
           <button className="w-7 h-7 rounded-lg flex items-center justify-center text-[#8888a0] hover:text-white hover:bg-[#1e1e21] transition-colors">
             <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
               <circle cx="12" cy="5" r="1.5" />
@@ -191,7 +296,7 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
         </div>
       </div>
 
-      {/* Caption */}
+      {/* Caption — always visible */}
       {(post.title || post.content) && (
         <div className="px-4 pb-3">
           {post.title && (
@@ -207,9 +312,10 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
       {post.mediaUrls.length > 0 && (
         <div className="overflow-hidden">
           {isBlurred ? (
+            // Locked: show gradient placeholder, never real image
             <LockedOverlay price={post.price} postId={post.id} onUnlock={onUnlock} />
           ) : isVideo ? (
-            <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
+            <div className="relative w-full aspect-video max-h-96 bg-black flex items-center justify-center overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <video
                 src={post.mediaUrls[0]}
@@ -228,7 +334,8 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
       <div className="px-4 py-3 flex items-center gap-5 text-sm text-[#8888a0] border-t border-[#1e1e21]">
         {/* Like */}
         <button
-          onClick={() => setLiked((l) => !l)}
+          onClick={handleLike}
+          disabled={likeLoading}
           className={`flex items-center gap-1.5 transition-all hover:text-[#e040fb] active:scale-110 ${liked ? 'text-[#e040fb]' : ''}`}
         >
           <svg
@@ -242,15 +349,18 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
           >
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
-          <span className="font-medium">{post.likesCount + (liked ? 1 : 0)}</span>
+          <span className="font-medium">{likeCount}</span>
         </button>
 
         {/* Comment */}
-        <button className="flex items-center gap-1.5 transition-colors hover:text-white">
+        <button
+          onClick={handleToggleComments}
+          className={`flex items-center gap-1.5 transition-colors hover:text-white ${showComments ? 'text-white' : ''}`}
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px]">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
-          <span className="font-medium">{commentCount}</span>
+          <span className="font-medium">{comments.length}</span>
         </button>
 
         {/* PPV badge */}
@@ -270,6 +380,55 @@ export default function PostCard({ post, isUnlocked = false, onUnlock }: PostCar
           </div>
         )}
       </div>
+
+      {/* Comments section */}
+      {showComments && (
+        <div className="border-t border-[#1e1e21] px-4 pb-4">
+          {/* Comment list */}
+          <div className="pt-3 space-y-3 max-h-64 overflow-y-auto">
+            {!commentsLoaded && (
+              <div className="flex justify-center py-4">
+                <div className="w-4 h-4 rounded-full border-2 border-[#e040fb] border-t-transparent animate-spin" />
+              </div>
+            )}
+            {commentsLoaded && comments.length === 0 && (
+              <p className="text-[#555568] text-xs text-center py-2">No comments yet. Be the first!</p>
+            )}
+            {comments.map(c => (
+              <div key={c.id} className="flex items-start gap-2">
+                <CommentAvatar displayName={c.user.displayName} avatarUrl={c.user.avatarUrl} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-1.5 flex-wrap">
+                    <span className="text-white text-xs font-semibold">{c.user.displayName}</span>
+                    <span className="text-[#555568] text-[10px]">{timeAgo(c.createdAt)}</span>
+                  </div>
+                  <p className="text-[#d0d0e0] text-sm leading-relaxed mt-0.5">{c.content}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* Comment input */}
+          <form onSubmit={handleSubmitComment} className="flex items-center gap-2 mt-3">
+            <input
+              type="text"
+              value={commentInput}
+              onChange={e => setCommentInput(e.target.value)}
+              placeholder="Write a comment…"
+              className="flex-1 rounded-xl bg-[#1e1e21] border border-[#2a2a30] text-white placeholder-[#555568] focus:outline-none focus:border-[#e040fb44] transition-all px-3 py-2 text-sm"
+            />
+            <button
+              type="submit"
+              disabled={!commentInput.trim() || submittingComment}
+              className="w-8 h-8 rounded-xl flex items-center justify-center disabled:opacity-40 hover:opacity-90 transition-opacity shrink-0"
+              style={{ background: 'linear-gradient(135deg, #e040fb, #7c4dff)' }}
+            >
+              <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
