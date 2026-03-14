@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
 
 interface AppSidebarProps {
   user: {
@@ -16,7 +17,6 @@ interface AppSidebarProps {
 export default function AppSidebar({ user }: AppSidebarProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [walletBalance, setWalletBalance] = useState<number | null>(null)
-  const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
@@ -27,9 +27,9 @@ export default function AppSidebar({ user }: AppSidebarProps) {
   }, [])
 
   const handleSignOut = async () => {
-    await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/login')
-    router.refresh()
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    window.location.href = '/login'
   }
 
   const initials = user.displayName
@@ -85,15 +85,6 @@ export default function AppSidebar({ user }: AppSidebarProps) {
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        </svg>
-      ),
-    },
-    {
-      href: '/creator-login',
-      label: 'Become a Creator',
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[18px] h-[18px] shrink-0">
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
         </svg>
       ),
     },
@@ -208,6 +199,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
             <Link
               key={href}
               href={href}
+              prefetch={true}
               title={collapsed ? label : undefined}
               className={`flex items-center gap-3 rounded-lg transition-all ${
                 collapsed ? 'justify-center px-0 py-3 mx-auto w-10 h-10' : 'px-4 py-3'
@@ -257,6 +249,7 @@ export default function AppSidebar({ user }: AppSidebarProps) {
             <Link
               key={href}
               href={href}
+              prefetch={true}
               title={collapsed ? label : undefined}
               className={`flex items-center gap-3 rounded-lg transition-all ${
                 collapsed ? 'justify-center px-0 py-3 mx-auto w-10 h-10' : 'px-4 py-3'

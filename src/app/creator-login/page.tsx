@@ -14,7 +14,7 @@ export default function CreatorLoginPage() {
 
   const [loginForm, setLoginForm] = useState({ email: '', password: '' })
   const [registerForm, setRegisterForm] = useState({
-    email: '', username: '', displayName: '', password: '', subscriptionPrice: '9.99',
+    email: '', username: '', displayName: '', password: '', subscriptionPrice: '9.99', accessCode: '',
   })
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -38,11 +38,17 @@ export default function CreatorLoginPage() {
     e.preventDefault()
     setLoading(true)
     setError('')
+    if (registerForm.accessCode !== 'Hello123') {
+      setError('Invalid access code')
+      setLoading(false)
+      return
+    }
     try {
+      const { accessCode: _code, ...signupData } = registerForm
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...registerForm, role: 'CREATOR' }),
+        body: JSON.stringify({ ...signupData, role: 'CREATOR' }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Registration failed')
@@ -160,6 +166,14 @@ export default function CreatorLoginPage() {
                 <label className="block text-sm font-medium text-[#8888a0] mb-1.5">Monthly Subscription Price (USD)</label>
                 <input type="number" min="1" step="0.01" value={registerForm.subscriptionPrice}
                   onChange={e => setRegisterForm(f => ({ ...f, subscriptionPrice: e.target.value }))}
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#1e1e21] border border-[#2a2a30] text-white placeholder-[#555568] focus:outline-none focus:border-[#7c4dff] focus:ring-1 focus:ring-[#7c4dff33] transition-all"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-[#8888a0] mb-1.5">Creator Access Code</label>
+                <input type="password" required value={registerForm.accessCode}
+                  onChange={e => setRegisterForm(f => ({ ...f, accessCode: e.target.value }))}
+                  placeholder="Enter your access code"
                   className="w-full px-4 py-2.5 rounded-xl bg-[#1e1e21] border border-[#2a2a30] text-white placeholder-[#555568] focus:outline-none focus:border-[#7c4dff] focus:ring-1 focus:ring-[#7c4dff33] transition-all"
                 />
               </div>
